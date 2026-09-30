@@ -42,7 +42,9 @@ def today(pid: str, db=Depends(get_db)):
 
 @router.post("/demo/advance-day")
 def advance_day(db=Depends(get_db)):
-    stale = checklist.close_window(db, datetime.utcnow())
-    # TODO(Samprada): attention.recompute_for_patient for affected patients
+    now = datetime.utcnow()
+    stale = checklist.close_window(db, now)
+    for p in db.query(Patient).all():
+        attention.recompute_for_patient(db, p, now)
     db.commit()
     return {"marked_no_response": len(stale)}
