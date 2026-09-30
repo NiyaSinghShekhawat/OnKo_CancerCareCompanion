@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   Stethoscope,
   UserRound,
-  UsersRound,
 } from "lucide-react";
 
 const roles = [
@@ -33,14 +32,6 @@ const roles = [
     description: "Stay informed about the parts of the care journey the patient has chosen to share and help with permitted coordination and uploads.",
     note: "Access remains governed by patient consent.",
     icon: HeartHandshake,
-  },
-  {
-    href: "/doctor",
-    name: "Care Team",
-    tag: "Coordinated care",
-    description: "Support shared follow-up, review assigned queries and recorded patient activity, and coordinate within authorized team access.",
-    note: "Role-based access keeps clinical authority clear.",
-    icon: UsersRound,
   },
 ];
 
@@ -73,7 +64,7 @@ export default function Home() {
           <p className="mt-5 text-sm font-bold uppercase tracking-[0.18em] text-onko-tealaccent">Choose your workspace</p>
           <h1 className="mt-3 text-5xl font-bold tracking-[-0.035em] text-onko-ink md:text-6xl">Your cancer care journey, connected.</h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-onko-muted md:text-xl">
-            OnKo keeps patients, caregivers and care teams aligned across appointments, medicines, reports, questions and milestones — while clinical decisions remain with the doctor.
+            OnKo keeps patients, caregivers and doctors aligned across appointments, medicines, reports, questions and milestones — while clinical decisions remain with the doctor.
           </p>
         </div>
 
