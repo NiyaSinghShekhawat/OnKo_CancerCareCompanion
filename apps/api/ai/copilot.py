@@ -2,7 +2,7 @@
 
 Pipeline:
   doctor text --> LLM (if configured) --> validate + ground every item --> normalise schedules --> draft
-             \-> rule-based structurer (if LLM unavailable / invalid)  -^
+              or rule-based structurer (if LLM unavailable / invalid)
 Either way the result is only a DRAFT; core stores it and the doctor must approve.
 """
 import re
