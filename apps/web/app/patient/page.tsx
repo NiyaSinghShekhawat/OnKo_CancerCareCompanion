@@ -1,25 +1,18 @@
-import Timeline from "@/components/Timeline";
-import SOSButton from "@/components/SOSButton";
+import { CalendarDays, ChevronRight, ClipboardList, MessageSquareText } from "lucide-react";
+import Link from "next/link";
+import PatientShell from "@/components/PatientShell";
+import PatientEventCard from "@/components/PatientEventCard";
 import { api } from "@/lib/api";
-
-export const dynamic = "force-dynamic";
-const PATIENT_ID = "p_rajesh"; // demo patient
-
-export default async function PatientHome() {
-  const d = await api.patient360(PATIENT_ID);
-  const p = d.patient;
-  return (
-    <main className="max-w-4xl mx-auto px-6 py-10 md:px-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-semibold">{p.name.split(" ")[0]}&apos;s care journey</h1>
-        <SOSButton patientId={p.id} />
-      </div>
-      <div className="mt-6 bg-white border border-onko-line rounded-2xl p-6">
-        <div className="text-base text-onko-ink/60">Doctor-approved regimen</div>
-        <div className="mt-1 text-lg font-semibold">{p.regimen_label} · Cycle {p.cycle_current} of {p.cycle_total}</div>
-      </div>
-      <h2 className="text-2xl font-semibold mt-10 mb-4">Timeline</h2>
-      <Timeline events={d.timeline} />
-    </main>
-  );
+import { fmtDate } from "@/lib/format";
+export const dynamic="force-dynamic"; const PATIENT_ID="p_rajesh";
+export default async function PatientHome(){
+ const [d,checklist]=await Promise.all([api.patient360(PATIENT_ID),api.checklistToday(PATIENT_ID)]); const p=d.patient;
+ const future=d.timeline.filter(e=>new Date(e.scheduled_at)>new Date(checklist.date+"T23:59:59")).slice(0,3);
+ return <PatientShell patient={p}><div className="mx-auto max-w-5xl">
+  <section className="flex flex-wrap items-center justify-between gap-4"><div><p className="onko-eyebrow">{fmtDate(checklist.date)}</p><h1 className="mt-1 text-[30px] font-bold tracking-tight sm:text-[38px]">Good to see you, {p.name.split(" ")[0]}</h1><p className="mt-2 text-[15px] text-onko-muted">Here is what is recorded for your care today.</p></div><div className="grid h-14 w-14 place-items-center rounded-full bg-onko-softteal text-[16px] font-bold text-onko-teal">{p.name.split(" ").map(x=>x[0]).join("")}</div></section>
+  {d.caregivers.length>0&&<div className="mt-5 rounded-2xl bg-onko-softteal px-4 py-3 text-[14px] text-onko-muted"><strong className="text-onko-ink">{d.caregivers[0].name}</strong> is linked as your {d.caregivers[0].relation.toLowerCase()} caregiver.</div>}
+  <section className="onko-card mt-5 p-4 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="onko-eyebrow">Today</p><h2 className="mt-1 text-[22px] font-bold">Your next steps</h2></div><span className="onko-chip bg-onko-softteal text-onko-teal">{checklist.items.length} recorded items</span></div><div className="mt-4 grid gap-3 md:grid-cols-2">{checklist.items.map(e=><PatientEventCard key={e.id} event={e} interactive/>)}</div><p className="mt-4 text-[12px] text-onko-muted">Daily response window closes {fmtDate(checklist.window_closes_at)}. A non-response is recorded as no response, not as a confirmed missed medicine.</p></section>
+  <div className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_.8fr]"><section><div className="mb-3 flex items-center justify-between"><h2 className="text-[20px] font-bold">Up next in your journey</h2><Link href="/patient/journey" className="text-[13px] font-semibold text-onko-teal">Full journey</Link></div><div className="grid gap-2">{future.length?future.map(e=><Link key={e.id} href="/patient/journey" className="onko-card flex items-center gap-3 p-4 hover:bg-onko-hover"><div className="grid h-11 w-11 place-items-center rounded-xl bg-onko-softteal text-onko-teal"><CalendarDays size={19}/></div><div className="min-w-0 flex-1"><strong className="text-[15px]">{e.title}</strong><p className="text-[13px] text-onko-muted">{fmtDate(e.scheduled_at)}</p></div><ChevronRight size={18} className="text-onko-muted"/></Link>):<p className="onko-card p-4 text-[14px] text-onko-muted">No later items are recorded.</p>}</div></section>
+  <aside className="grid content-start gap-3"><Link href="/patient/records" className="onko-card p-5 hover:bg-onko-hover"><ClipboardList size={20} className="text-onko-teal"/><h3 className="mt-3 text-[17px] font-bold">Your records</h3><p className="mt-1 text-[14px] text-onko-muted">{d.reports.length} report{d.reports.length===1?"":"s"} available</p></Link><Link href="/patient/help" className="onko-card p-5 hover:bg-onko-hover"><MessageSquareText size={20} className="text-onko-teal"/><h3 className="mt-3 text-[17px] font-bold">Care team help</h3><p className="mt-1 text-[14px] text-onko-muted">{d.open_queries.length} open question{d.open_queries.length===1?"":"s"}</p></Link></aside></div>
+ </div></PatientShell>
 }
