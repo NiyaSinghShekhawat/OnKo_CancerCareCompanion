@@ -175,18 +175,32 @@ def render_recorded(patient, recorded: list[tuple[int, str, str, bool]], unknown
 
 # ---------------- sending ----------------
 
+last_error: str | None = None   # why the most recent send() failed, shown in /whatsapp/send-checklist
+
+
 def send(to: str, body: str) -> bool:
     """Send one WhatsApp message via Twilio. Without Twilio keys it prints instead (dry run). Never raises."""
-    sid, token = os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN")
+    global last_error
+    last_error = None
+    sid, token = (os.getenv("TWILIO_ACCOUNT_SID") or "").strip(), (os.getenv("TWILIO_AUTH_TOKEN") or "").strip()
+    sender = (os.getenv("TWILIO_WHATSAPP_FROM") or "whatsapp:+14155238886").strip()
     if not sid or not token:
+        last_error = "Dry run: TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not set in .env (restart the server after editing .env)"
         print(f"[whatsapp:dry-run] -> {to}\n{body}\n")
         return False
+    if not to or "X" in to:
+        last_error = f"Patient's WhatsApp number looks unset: '{to}'. Set DEMO_PATIENT_WHATSAPP in .env, then run python -m core.seed"
+        print(f"[whatsapp] {last_error}")
+        return False
+    to = to if to.startswith("whatsapp:") else f"whatsapp:{to}"
+    sender = sender if sender.startswith("whatsapp:") else f"whatsapp:{sender}"
     try:
         from twilio.rest import Client
-        Client(sid, token).messages.create(from_=os.getenv("TWILIO_WHATSAPP_FROM"), to=to, body=body)
+        Client(sid, token).messages.create(from_=sender, to=to, body=body)
         return True
     except Exception as e:  # noqa: BLE001
-        print(f"[whatsapp] send to {to} failed: {e}")
+        last_error = f"Twilio error sending to {to}: {e}"
+        print(f"[whatsapp] {last_error}")
         return False
 
 

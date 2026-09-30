@@ -131,4 +131,7 @@ def send_checklist(patient_id: str, db=Depends(get_db)):
     body = messages.render_checklist(p, [to_dict(i) for i in items])
     sent = messages.send(p.phone_whatsapp, body)
     _last_checklist[p.id] = (datetime.utcnow(), [i.id for i in items])
-    return {"sent": sent, "preview": body, "items": len(items)}
+    out = {"sent": sent, "preview": body, "items": len(items), "to": p.phone_whatsapp}
+    if not sent:
+        out["error"] = messages.last_error
+    return out
