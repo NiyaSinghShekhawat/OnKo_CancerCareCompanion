@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ClipboardList, FileText, MessageSquareText, UserRound, Users } from "lucide-react";
 import DoctorShell from "@/components/DoctorShell";
+import JourneyStateControl from "@/components/JourneyStateControl";
 import Timeline from "@/components/Timeline";
 import { api } from "@/lib/api";
 import { fmtDate } from "@/lib/format";
