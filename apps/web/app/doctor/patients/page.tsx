@@ -1,54 +1,20 @@
 import Link from "next/link";
-import { ArrowUpRight, Search, Users } from "lucide-react";
+import { ArrowRight, Download, Search, ShieldCheck, UserPlus } from "lucide-react";
 import DoctorShell from "@/components/DoctorShell";
 import { api } from "@/lib/api";
-
-export const dynamic = "force-dynamic";
-
-export default async function Registry() {
-  const patients = await api.patients();
-  return (
-    <DoctorShell>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="onko-eyebrow">Patient registry</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">Patients</h1>
-          <p className="mt-2 text-sm text-onko-muted">Longitudinal care records across your active patient panel.</p>
-        </div>
-        <div className="onko-chip bg-onko-softteal text-onko-teal"><Users size={14} className="mr-1.5" />{patients.length} patients</div>
-      </div>
-
-      <div className="onko-card mt-7 overflow-hidden">
-        <div className="flex flex-wrap items-center gap-3 border-b border-onko-line p-4">
-          <div className="relative min-w-[240px] flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-onko-muted" />
-            <input placeholder="Search the patient registry..." className="w-full rounded-xl border border-onko-line bg-onko-surface py-2.5 pl-9 pr-3 text-sm outline-none focus:border-onko-teal" />
-          </div>
-          <span className="rounded-xl border border-onko-line bg-white px-3 py-2.5 text-xs font-semibold text-onko-muted">All journey states</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px] text-sm">
-            <thead className="bg-onko-surface text-left">
-              <tr className="text-xs font-semibold uppercase tracking-wide text-onko-muted">
-                <th className="px-5 py-3">Patient</th><th className="px-5 py-3">Regimen</th><th className="px-5 py-3">Cycle</th><th className="px-5 py-3">Journey state</th><th className="px-5 py-3">Preferred language</th><th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-onko-line">
-              {patients.map((p) => (
-                <tr key={p.id} className="transition hover:bg-onko-surface">
-                  <td className="px-5 py-4"><div className="font-semibold">{p.name}</div><div className="mt-0.5 text-xs text-onko-muted">{p.age} years · {p.gender}</div></td>
-                  <td className="px-5 py-4 text-onko-muted">{p.regimen_label || "—"}</td>
-                  <td className="px-5 py-4 font-medium">{p.cycle_total ? p.cycle_current + " of " + p.cycle_total : "—"}</td>
-                  <td className="px-5 py-4"><span className="onko-chip bg-onko-softteal text-onko-teal">{p.journey_state.replaceAll("_", " ").toLowerCase()}</span></td>
-                  <td className="px-5 py-4 text-onko-muted">{p.preferred_language}</td>
-                  <td className="px-5 py-4 text-right"><Link className="inline-flex items-center gap-1 font-semibold text-onko-teal" href={"/doctor/patients/" + p.id}>Patient 360 <ArrowUpRight size={14} /></Link></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </DoctorShell>
-  );
+export const dynamic="force-dynamic";
+export default async function Registry(){
+ const patients=await api.patients();
+ return <DoctorShell>
+  <div className="flex flex-wrap items-end justify-between gap-5"><div><p className="text-[11px] font-bold uppercase tracking-[.12em] text-onko-teal">Longitudinal registry · Active safer harbor protocol</p><h1 className="mt-2 text-[38px] font-bold tracking-[-.035em]">Patient Registry</h1><p className="mt-1 text-[14px] text-onko-muted">Longitudinal oncology care cohorts and active journey tracking.</p></div><div className="flex gap-2"><button className="onko-button-secondary"><Download size={15}/>Export cohort CSV</button><button className="onko-button-primary"><UserPlus size={15}/>Enroll new patient</button></div></div>
+  <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4"><div className="onko-card p-4"><p className="text-[10px] font-bold uppercase text-onko-muted">Active treatment</p><p className="mt-2 text-[28px] font-bold text-onko-teal">{patients.length}</p></div><div className="onko-card p-4"><p className="text-[10px] font-bold uppercase text-onko-muted">Registry total</p><p className="mt-2 text-[28px] font-bold">{patients.length}</p></div><div className="onko-card p-4"><p className="text-[10px] font-bold uppercase text-onko-muted">Action escalations</p><p className="mt-2 text-[28px] font-bold text-onko-amber">—</p></div><div className="onko-card p-4"><p className="text-[10px] font-bold uppercase text-onko-muted">Cohort adherence</p><p className="mt-2 text-[28px] font-bold">—</p></div></div>
+  <div className="mt-5 flex gap-2 rounded-xl bg-onko-softteal/65 px-4 py-3 text-[12px] leading-5 text-onko-muted"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-onko-teal"/><span><strong className="text-onko-ink">Governance notice:</strong> Journey states are clinician-governed and never inferred by OnKo.</span></div>
+  <div className="onko-card mt-5 overflow-hidden"><div className="flex flex-wrap gap-3 border-b border-onko-line bg-onko-surface p-4"><div className="relative min-w-[280px] flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-onko-muted"/><input placeholder="Search patients by name, hospital MRN or OnKo ID..." className="w-full rounded-lg border border-onko-line bg-white py-2.5 pl-9 pr-3 text-[13px] outline-none focus:border-onko-teal"/></div><span className="onko-chip bg-onko-teal text-white">All ({patients.length})</span><span className="onko-chip bg-white text-onko-muted">Needs review</span><span className="onko-chip bg-white text-onko-muted">Follow-up</span></div>
+  <div className="grid gap-3 bg-onko-surface p-4">{patients.map((p,i)=><article key={p.id} className={"grid gap-4 rounded-xl border border-onko-line bg-white p-4 md:grid-cols-[minmax(220px,1.2fr)_minmax(150px,.7fr)_minmax(220px,1fr)_auto] md:items-center "+(i===0?"border-l-4 border-l-amber-500":"border-l-4 border-l-onko-teal")}>
+    <div><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-onko-softteal text-xs font-bold text-onko-teal">{p.name.split(" ").map(x=>x[0]).join("").slice(0,2)}</span><div><h2 className="text-[15px] font-bold">{p.name} <span className="font-normal text-onko-muted">({p.age}y, {p.gender.slice(0,1)})</span></h2><p className="mt-1 text-[11px] text-onko-muted">{p.id} · {p.regimen_label||"No regimen recorded"}</p></div></div></div>
+    <div><p className="text-[9px] font-bold uppercase tracking-wide text-onko-muted">Journey staging</p><span className="mt-1 inline-flex rounded-full bg-onko-softteal px-2 py-1 text-[10px] font-bold text-onko-teal">{p.journey_state.replaceAll("_"," ").toLowerCase()}</span></div>
+    <div><p className="text-[9px] font-bold uppercase tracking-wide text-onko-muted">Care context</p><p className="mt-1 text-[12px] leading-5">{p.cycle_total?"Cycle "+p.cycle_current+" of "+p.cycle_total:"Longitudinal follow-up"} · {p.preferred_language}</p></div>
+    <Link href={"/doctor/patients/"+p.id} className="onko-button-primary whitespace-nowrap">Open Patient 360 <ArrowRight size={14}/></Link>
+  </article>)}</div></div>
+ </DoctorShell>
 }
