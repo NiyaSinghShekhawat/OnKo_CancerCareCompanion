@@ -1,20 +1,16 @@
+import { Filter, ShieldCheck } from "lucide-react";
 import DoctorShell from "@/components/DoctorShell";
 import StatCards from "@/components/StatCards";
 import AttentionQueue from "@/components/AttentionQueue";
 import { api } from "@/lib/api";
-
-export const dynamic = "force-dynamic";
-
-export default async function DoctorHome() {
-  const [overview, attention] = await Promise.all([api.overview(), api.attention()]);
-  return (
-    <DoctorShell>
-      <h1 className="text-3xl font-semibold">Good morning, Dr. Mehta</h1>
-      <p className="text-onko-ink/70 mt-1">Here is what needs your attention across your patients.</p>
-      <div className="mt-6"><StatCards data={overview} /></div>
-      <h2 className="text-xl font-semibold mt-10 mb-1">Attention queue</h2>
-      <p className="text-sm text-onko-ink/70 mb-4">Surfaced from recorded activity, each with its reason.</p>
-      <AttentionQueue items={attention} />
-    </DoctorShell>
-  );
+export const dynamic="force-dynamic";
+export default async function DoctorHome(){
+ const [overview,attention]=await Promise.all([api.overview(),api.attention()]);
+ return <DoctorShell>
+   <div className="rounded-xl border border-onko-softteal bg-onko-softteal/55 px-5 py-4 text-[14px] leading-6 text-onko-teal"><ShieldCheck size={17} className="mr-2 inline"/> <strong>Clinical Boundary Notice:</strong> OnKo organizes and surfaces observable workflow events. Clinicians interpret clinical significance and direct all care actions.</div>
+   <div className="mt-6 flex flex-wrap items-end justify-between gap-5"><div><p className="text-[13px] font-bold uppercase tracking-[.12em] text-onko-teal">Attending command console · Care journey orchestration</p><h1 className="mt-2 text-[48px] font-bold leading-[1.05] tracking-[-.035em]">Good morning, Dr. Mehta</h1><p className="mt-2 text-[17px] leading-7 text-onko-muted">Here is what needs your attention today across {overview.active_patients} active patient care journeys.</p></div><button className="onko-button-secondary"><Filter size={16}/>View filters</button></div>
+   <div className="my-6 border-b border-onko-line"/>
+   <StatCards data={overview}/>
+   <section className="mt-8"><div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-[30px] font-bold tracking-tight">Explainable Attention Queue</h2><p className="mt-1 text-[15px] text-onko-muted">Observable clinical milestones and patient-reported workflow interruptions requiring doctor action.</p></div><span className="onko-chip bg-white text-onko-teal shadow-sm">All ({attention.length})</span></div><AttentionQueue items={attention}/></section>
+ </DoctorShell>
 }

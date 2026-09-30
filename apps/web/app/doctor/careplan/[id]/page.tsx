@@ -1,60 +1,19 @@
 "use client";
 import { useState } from "react";
+import { Check, FlaskConical, Sparkles, Trash2, ArrowUp, ArrowDown, Plus } from "lucide-react";
 import DoctorShell from "@/components/DoctorShell";
 import { api } from "@/lib/api";
-import type { CarePlanDraft, CopilotItem, EventType } from "@/lib/types";
-
-const TYPES: EventType[] = ["MEDICATION", "INVESTIGATION", "TREATMENT", "APPOINTMENT", "MILESTONE"];
-
-export default function CopilotPage({ params }: { params: { id: string } }) {
-  const [text, setText] = useState("");
-  const [draft, setDraft] = useState<CarePlanDraft | null>(null);
-  const [approved, setApproved] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const edit = (i: number, patch: Partial<CopilotItem>) =>
-    draft && setDraft({ ...draft, items: draft.items.map((it, j) => (j === i ? { ...it, ...patch } : it)) });
-
-  return (
-    <DoctorShell>
-      <h1 className="text-2xl font-semibold">Care Plan Copilot</h1>
-      <p className="text-onko-ink/70 mt-1">Write the plan you have decided. OnKo structures it; nothing reaches the patient until you approve.</p>
-
-      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4}
-        placeholder="e.g. Cycle 5 chemo on 15 Oct. Capecitabine 500mg BD after food for 14 days. CBC on 13 Oct."
-        className="mt-6 w-full border border-onko-line rounded-lg p-3 bg-white" />
-      <button disabled={busy || !text} onClick={async () => { setBusy(true); setDraft(await api.createDraft(params.id, text)); setBusy(false); }}
-        className="mt-3 bg-onko-teal text-white px-4 py-2 rounded-md disabled:opacity-50">
-        {busy ? "Structuring…" : "Structure plan"}
-      </button>
-
-      {draft && (
-        <section className="mt-8">
-          <h2 className="font-semibold mb-3">Draft — review and edit</h2>
-          {draft.warnings?.map((w) => <p key={w} className="text-sm text-onko-amber mb-2">{w}</p>)}
-          <div className="bg-white border border-onko-line rounded-lg overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-onko-ink/60"><tr><th className="p-3">Type</th><th className="p-3">Item</th><th className="p-3">Start</th><th className="p-3">End</th><th className="p-3">From your text</th></tr></thead>
-              <tbody>
-                {draft.items.map((it, i) => (
-                  <tr key={i} className="border-t border-onko-line">
-                    <td className="p-2"><select value={it.type} onChange={(e) => edit(i, { type: e.target.value as EventType })} className="border rounded p-1">
-                      {TYPES.map((t) => <option key={t}>{t}</option>)}</select></td>
-                    <td className="p-2"><input value={it.title} onChange={(e) => edit(i, { title: e.target.value })} className="border rounded p-1 w-full" /></td>
-                    <td className="p-2"><input type="date" value={it.start_date} onChange={(e) => edit(i, { start_date: e.target.value })} className="border rounded p-1" /></td>
-                    <td className="p-2"><input type="date" value={it.end_date ?? ""} onChange={(e) => edit(i, { end_date: e.target.value || null })} className="border rounded p-1" /></td>
-                    <td className="p-2 text-onko-ink/60 italic">{it.source_span}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <button disabled={approved} onClick={async () => { await api.updateDraft(draft.id, draft.items); await api.approveDraft(draft.id); setApproved(true); }}
-            className="mt-4 bg-onko-teal text-white px-4 py-2 rounded-md disabled:opacity-60">
-            {approved ? "Plan approved — added to patient journey" : "Approve plan"}
-          </button>
-        </section>
-      )}
-    </DoctorShell>
-  );
+import type { CarePlanDraft,CopilotItem,EventType } from "@/lib/types";
+const TYPES:EventType[]=["MEDICATION","INVESTIGATION","TREATMENT","APPOINTMENT","MILESTONE"];
+export default function CopilotPage({params}:{params:{id:string}}){
+ const [text,setText]=useState(""),[draft,setDraft]=useState<CarePlanDraft|null>(null),[approved,setApproved]=useState(false),[busy,setBusy]=useState(false);
+ const edit=(i:number,patch:Partial<CopilotItem>)=>draft&&setDraft({...draft,items:draft.items.map((it,j)=>j===i?{...it,...patch}:it)}); const remove=(i:number)=>draft&&setDraft({...draft,items:draft.items.filter((_,j)=>j!==i)}); const move=(i:number,dir:-1|1)=>{if(!draft)return;const j=i+dir;if(j<0||j>=draft.items.length)return;const items=[...draft.items];[items[i],items[j]]=[items[j],items[i]];setDraft({...draft,items})}; const add=()=>draft&&setDraft({...draft,items:[...draft.items,{type:"MILESTONE",title:"New care-plan item",details:{},start_date:new Date().toISOString().slice(0,10),end_date:null,recurrence:null,source_span:"Added manually by clinician"}]});
+ return <DoctorShell><div className="max-w-[1380px]">
+  <section className="onko-card overflow-hidden"><div className="flex items-center justify-between border-b border-onko-line bg-onko-softteal/55 px-6 py-5"><div><p className="text-[12px] font-bold uppercase tracking-[.1em] text-onko-teal">Care Plan Copilot · Human-governed workflow structuring</p><h1 className="mt-1 text-[30px] font-bold">Structure an Already-Decided Plan</h1></div><span className="onko-chip bg-white text-onko-teal">Zero diagnostic generation</span></div>
+  <div className="p-6"><p className="text-[15px] font-bold uppercase tracking-[.08em] text-onko-muted">Doctor&apos;s dictated / typed clinical entry</p><textarea value={text} onChange={e=>setText(e.target.value)} rows={4} placeholder="CBC before chemotherapy on 24 Sept. Capecitabine 500mg BID with food for 14 days..." className="mt-2 w-full rounded-xl border border-onko-line bg-onko-surface p-4 text-[16px] leading-7 outline-none focus:border-onko-teal"/>
+  <div className="mt-3 flex justify-end"><button disabled={busy||!text} onClick={async()=>{setBusy(true);setDraft(await api.createDraft(params.id,text));setBusy(false)}} className="onko-button-primary disabled:opacity-50"><Sparkles size={15}/>{busy?"Structuring…":"Structure Plan (Done)"}</button></div></div></section>
+  {draft&&<section className="mt-6"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><p className="text-[12px] font-bold uppercase tracking-[.1em] text-violet-700">Draft workflow stage</p><h2 className="mt-1 text-[23px] font-bold">{draft.items.length} items structured from your input. Review, adjust, or reclassify below.</h2></div><span className="onko-chip bg-onko-amberbg text-onko-amber">Requires clinician approval</span></div>
+  <div className="mb-3 flex justify-end"><button onClick={add} className="onko-button-secondary"><Plus size={15}/>Add item</button></div><div className="grid gap-3">{draft.items.map((it,i)=><article key={i} className="onko-card p-6"><div className="grid gap-4 lg:grid-cols-[180px_1fr_170px_170px]"><label className="text-[15px] font-bold uppercase text-onko-muted">Type<select value={it.type} onChange={e=>edit(i,{type:e.target.value as EventType})} className="mt-2 w-full rounded-lg border border-onko-line p-2.5 text-[15px]">{TYPES.map(t=><option key={t}>{t}</option>)}</select></label><label className="text-[15px] font-bold uppercase text-onko-muted">Workflow item<input value={it.title} onChange={e=>edit(i,{title:e.target.value})} className="mt-2 w-full rounded-lg border border-onko-line p-2.5 text-[15px]"/></label><label className="text-[15px] font-bold uppercase text-onko-muted">Start<input type="date" value={it.start_date} onChange={e=>edit(i,{start_date:e.target.value})} className="mt-2 w-full rounded-lg border border-onko-line p-2.5 text-[15px]"/></label><label className="text-[15px] font-bold uppercase text-onko-muted">End<input type="date" value={it.end_date??""} onChange={e=>edit(i,{end_date:e.target.value||null})} className="mt-2 w-full rounded-lg border border-onko-line p-2.5 text-[15px]"/></label></div><div className="mt-4 flex flex-wrap justify-end gap-2"><button onClick={()=>move(i,-1)} className="onko-button-secondary"><ArrowUp size={14}/>Up</button><button onClick={()=>move(i,1)} className="onko-button-secondary"><ArrowDown size={14}/>Down</button><button onClick={()=>remove(i)} className="onko-button-secondary text-onko-sos"><Trash2 size={14}/>Remove</button></div><div className="mt-4 flex gap-2 rounded-xl bg-onko-softteal/60 p-3 text-[14px] text-onko-muted"><FlaskConical size={15} className="shrink-0 text-onko-teal"/><span><strong>Extracted from doctor input:</strong> “{it.source_span}”</span></div></article>)}</div>
+  <div className="mt-4 flex justify-end"><button disabled={approved} onClick={async()=>{await api.updateDraft(draft.id,draft.items);await api.approveDraft(draft.id);setApproved(true)}} className="onko-button-primary disabled:opacity-60"><Check size={15}/>{approved?"Plan approved — added to journey":"Approve plan"}</button></div></section>}
+ </div></DoctorShell>
 }

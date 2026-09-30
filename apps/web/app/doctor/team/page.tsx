@@ -1,0 +1,2 @@
+import DoctorShell from "@/components/DoctorShell";import TeamWorkspace from "@/components/TeamWorkspace";
+export default function TeamPage(){return <DoctorShell><p className="onko-eyebrow text-onko-teal">Authorized care team</p><h1 className="mt-2 text-[44px] font-bold tracking-tight">My Team</h1><p className="mt-2 max-w-3xl text-[16px] leading-7 text-onko-muted">Manage authorized team members, patient assignments and workflow access inside the Doctor workspace. Clinical decision authority remains with the responsible clinician.</p><TeamWorkspace/></DoctorShell>}

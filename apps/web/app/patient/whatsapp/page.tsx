@@ -1,0 +1,1 @@
+import PatientShell from "@/components/PatientShell";import WhatsAppPrototype from "@/components/WhatsAppPrototype";import {api} from "@/lib/api";export const dynamic="force-dynamic";export default async function WhatsAppPage(){const d=await api.patient360("p_rajesh");return <PatientShell patient={d.patient}><WhatsAppPrototype/></PatientShell>}

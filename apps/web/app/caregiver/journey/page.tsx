@@ -1,0 +1,5 @@
+import CaregiverShell from "@/components/CaregiverShell";
+import PatientEventCard from "@/components/PatientEventCard";
+import {api} from "@/lib/api";
+export const dynamic="force-dynamic";
+export default async function CaregiverJourney(){const d=await api.patient360("p_rajesh"),c=d.caregivers[0];if(!c)return null;const allowed=c.consent_status==="GRANTED"&&c.permissions.view_journey;return <CaregiverShell patient={d.patient} caregiver={c}><div className="mx-auto max-w-4xl"><p className="onko-eyebrow">Shared care journey</p><h1 className="mt-1 text-[30px] font-bold sm:text-[38px]">{d.patient.name}'s journey</h1><p className="mt-2 text-[14px] leading-6 text-onko-muted">Chronological care activities visible under the patient's current consent.</p>{allowed?<div className="mt-7 space-y-4">{d.timeline.map(e=><PatientEventCard key={e.id} event={e}/>)}</div>:<div className="mt-7 rounded-3xl bg-white p-7 text-center shadow-sm"><h2 className="text-[20px] font-bold">Journey access not shared</h2><p className="mt-2 text-[14px] text-onko-muted">This section remains hidden until the patient grants journey access.</p></div>}</div></CaregiverShell>}
