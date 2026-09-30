@@ -2,7 +2,7 @@
 import Link from "next/link";
 import {usePathname} from "next/navigation";
 import {useEffect,useRef,useState} from "react";
-import {CalendarDays,ChevronDown,ClipboardList,FileText,Home,Languages,MessageSquareText,Pill,Route,UsersRound} from "lucide-react";
+import {CalendarDays,ChevronDown,ClipboardList,FileText,Home,Languages,MessageCircle,MessageSquareText,Pill,Route,UsersRound} from "lucide-react";
 import SOSButton from "@/components/SOSButton";
 
 const primary=[
@@ -14,6 +14,7 @@ const primary=[
 ];
 const more=[
  {href:"/patient/care",label:"Appointments & care activities",icon:CalendarDays},
+ {href:"/patient/whatsapp",label:"WhatsApp check-in demo",icon:MessageCircle},
  {href:"/patient/summary",label:"Portable care summary",icon:ClipboardList},
  {href:"/patient/profile",label:"Caregiver, consent & preferences",icon:UsersRound},
 ];
