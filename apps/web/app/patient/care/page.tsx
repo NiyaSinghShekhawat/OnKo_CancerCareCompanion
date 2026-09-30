@@ -1,0 +1,18 @@
+import {CalendarDays,CheckCircle2,ClipboardCheck,Stethoscope,Target} from "lucide-react";
+import PatientShell from "@/components/PatientShell";
+import PatientEventCard from "@/components/PatientEventCard";
+import {api} from "@/lib/api";
+export const dynamic="force-dynamic"; const ID="p_rajesh";
+const sections=[
+ {id:"appointments",title:"Appointments & follow-ups",type:"APPOINTMENT",icon:CalendarDays,description:"Upcoming, completed, missed and rescheduled appointments recorded by your care team."},
+ {id:"investigations",title:"Investigations & tests",type:"INVESTIGATION",icon:ClipboardCheck,description:"Doctor-ordered tests, due dates and recorded completion status. Results are not interpreted here."},
+ {id:"treatments",title:"Treatments & procedures",type:"TREATMENT",icon:Stethoscope,description:"Your doctor-approved treatment and procedure schedule."},
+ {id:"milestones",title:"Milestones",type:"MILESTONE",icon:Target,description:"Daily and weekly care activities assigned by your care team."},
+] as const;
+export default async function CareActivities(){const d=await api.patient360(ID),p=d.patient;const completed=d.timeline.filter(e=>e.status==="COMPLETED").length;return <PatientShell patient={p}><div className="mx-auto max-w-5xl">
+ <p className="onko-eyebrow">More of your care</p><h1 className="mt-1 text-[30px] font-bold sm:text-[38px]">Appointments & Care Activities</h1><p className="mt-2 max-w-2xl text-[15px] leading-6 text-onko-muted">The rest of your doctor-approved journey, grouped here so the main navigation stays simple.</p>
+ <section className="mt-5 grid gap-3 sm:grid-cols-3"><div className="onko-card p-5"><p className="text-[12px] font-bold uppercase text-onko-muted">Recorded activities</p><p className="mt-2 text-[30px] font-bold">{d.timeline.length}</p></div><div className="onko-card p-5"><p className="text-[12px] font-bold uppercase text-onko-muted">Completed</p><p className="mt-2 text-[30px] font-bold text-onko-teal">{completed}</p></div><div className="onko-card p-5"><p className="text-[12px] font-bold uppercase text-onko-muted">Journey state</p><p className="mt-2 text-[16px] font-bold capitalize">{p.journey_state.replaceAll("_"," ").toLowerCase()}</p></div></section>
+ <nav className="mt-5 flex gap-2 overflow-x-auto pb-1">{sections.map(s=><a key={s.id} href={"#"+s.id} className="whitespace-nowrap rounded-full border border-onko-line bg-white px-4 py-2 text-[13px] font-semibold text-onko-teal hover:bg-onko-hover">{s.title}</a>)}</nav>
+ <div className="mt-5 grid gap-6">{sections.map(s=>{const I=s.icon,items=d.timeline.filter(e=>e.type===s.type);return <section id={s.id} key={s.id} className="scroll-mt-28"><div className="mb-3 flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-onko-softteal text-onko-teal"><I size={19}/></span><div><h2 className="text-[20px] font-bold">{s.title}</h2><p className="mt-1 text-[13px] leading-5 text-onko-muted">{s.description}</p></div></div><div className="grid gap-3 md:grid-cols-2">{items.length?items.map(e=><PatientEventCard key={e.id} event={e} interactive/>):<div className="onko-card p-5 text-[14px] text-onko-muted">No {s.title.toLowerCase()} are recorded.</div>}</div></section>})}</div>
+ <div className="mt-6 flex gap-3 rounded-2xl bg-onko-softteal p-5 text-[13px] leading-5 text-onko-muted"><CheckCircle2 size={19} className="shrink-0 text-onko-teal"/><p>Completion and missed-status controls are prototype workflow actions. They use the existing event-status API when available and mocks during UI testing.</p></div>
+ </div></PatientShell>}

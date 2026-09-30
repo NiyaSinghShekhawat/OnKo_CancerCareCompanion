@@ -1,0 +1,11 @@
+"use client";
+import {useState} from "react";
+import {FileUp,UploadCloud,X} from "lucide-react";
+export default function ReportUploadPrototype(){
+ const [open,setOpen]=useState(false),[file,setFile]=useState<File|null>(null),[saved,setSaved]=useState(false);
+ return <><button onClick={()=>{setOpen(true);setSaved(false)}} className="onko-button-secondary"><FileUp size={17}/>Upload report</button>
+ {open&&<div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4"><div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="onko-eyebrow">UI prototype</p><h2 className="mt-1 text-[22px] font-bold">Upload a health record</h2><p className="mt-2 text-[13px] leading-5 text-onko-muted">Choose a report, prescription, investigation record or treatment document. The backend upload connection is intentionally not implemented yet.</p></div><button onClick={()=>setOpen(false)} className="grid h-9 w-9 place-items-center rounded-full bg-onko-surface"><X size={17}/></button></div>
+ <label className="mt-5 grid cursor-pointer place-items-center rounded-2xl border border-dashed border-onko-teal bg-onko-softteal/50 p-8 text-center"><UploadCloud size={28} className="text-onko-teal"/><strong className="mt-3 text-[15px]">{file?file.name:"Choose a file"}</strong><span className="mt-1 text-[12px] text-onko-muted">PDF or image for prototype testing</span><input type="file" accept=".pdf,image/*" className="hidden" onChange={e=>{setFile(e.target.files?.[0]??null);setSaved(false)}}/></label>
+ {saved&&<p className="mt-3 rounded-xl bg-onko-softteal p-3 text-[13px] font-semibold text-onko-teal">Prototype selection saved locally in this screen. No medical record was uploaded.</p>}
+ <div className="mt-5 flex justify-end gap-2"><button onClick={()=>setOpen(false)} className="onko-button-secondary">Cancel</button><button disabled={!file} onClick={()=>setSaved(true)} className="onko-button-primary disabled:opacity-50">Preview upload</button></div></div></div>}</>
+}
