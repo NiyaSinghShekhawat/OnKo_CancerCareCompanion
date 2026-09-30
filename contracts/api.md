@@ -16,6 +16,7 @@ Shapes of every entity live in `schemas.json`. AI output shapes live in `ai_outp
 | GET | `/patients/{id}/timeline` | `CareEvent[]` sorted by `scheduled_at` |
 | GET | `/patients/{id}/360` | `Patient360` |
 | PATCH | `/patients/{id}/journey-state` | body `{ state, reason }` → `Patient` (doctor only) |
+| POST | `/patients/{id}/mark-reviewed` | → `Patient` (doctor only; sets last_reviewed_at = now) |
 
 ## Care plan — owner: Samprada (`core/routers/careplan.py`)
 | Method | Path | Returns |
