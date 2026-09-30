@@ -1,12 +1,11 @@
 """Care Plan Copilot routes. AI output is only ever a DRAFT until the doctor approves."""
-from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
 from core.auth import get_actor, require
 from core.models import Patient, CarePlanDraft, CarePlanItem, CareEvent
 from core.serialize import to_dict
-from core.services import audit
+from core.services import audit, recurrence
 from ai.copilot import structure_care_plan
 
 router = APIRouter(tags=["careplan"])
@@ -64,14 +63,14 @@ def approve_draft(draft_id: str, db=Depends(get_db), actor=Depends(get_actor)):
                             approved_by=actor.user_id)
         db.add(item)
         db.flush()
-        # TODO(Samprada): expand recurrence into multiple CareEvents
-        ev = CareEvent(patient_id=d.patient_id, type=item.type, title=item.title, details=item.details,
-                       scheduled_at=datetime.fromisoformat(item.start_date), source="copilot_approved",
-                       care_plan_item_id=item.id)
-        db.add(ev)
-        created.append(ev)
+        for when in recurrence.expand(item.start_date, item.end_date, item.recurrence):
+            ev = CareEvent(patient_id=d.patient_id, type=item.type, title=item.title, details=item.details,
+                           scheduled_at=when, source="copilot_approved", care_plan_item_id=item.id)
+            db.add(ev)
+            created.append(ev)
     d.status = "APPROVED"
-    audit.log(db, actor, "care_plan_approved", "care_plan_draft", d.id, None, {"n_items": len(d.items)})
+    audit.log(db, actor, "care_plan_approved", "care_plan_draft", d.id, None,
+              {"n_items": len(d.items), "n_events": len(created)})
     db.commit()
     return [to_dict(e) for e in created]
 
