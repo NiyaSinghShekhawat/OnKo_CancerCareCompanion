@@ -1,0 +1,49 @@
+{
+  "_note": "Exact JSON the AI module returns. Owner: Shreyan. Every output includes ok:boolean. On failure return ok:false with empty data — never raise.",
+
+  "CopilotOutput": {
+    "ok": true,
+    "items": [
+      {
+        "type": "MEDICATION",
+        "title": "Capecitabine",
+        "details": { "dose": "500 mg", "frequency": "twice daily", "timing": "after food", "instructions": "as written by doctor" },
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-14",
+        "recurrence": "daily 09:00, 21:00",
+        "source_span": "Capecitabine 500mg BD after food for 14 days"
+      }
+    ],
+    "unparsed_text": "",
+    "warnings": ["Dose not specified for Ondansetron — left blank for doctor"]
+  },
+
+  "QueryClassification": {
+    "ok": true,
+    "category": "SYMPTOM_CONCERN",
+    "summary": "Patient reports nausea since yesterday and mild discomfort.",
+    "route_to": "care_team_queue"
+  },
+
+  "ReportExtraction": {
+    "ok": true,
+    "report_type": "CBC",
+    "report_date": "2026-09-20",
+    "values": [
+      { "name": "Hb", "value": "9.2", "unit": "g/dL", "reference_range_as_printed": "12-15", "source_line": "Haemoglobin 9.2 g/dL (12-15)" }
+    ]
+  },
+
+  "ReviewSummary": {
+    "ok": true,
+    "since": "2026-09-20T10:00:00Z",
+    "bullets": [
+      "Completed: Chemotherapy Cycle 4 (Day 1) on 24 Sep",
+      "Reported missed: Capecitabine evening dose, 23 Sep",
+      "3 consecutive daily check-ins unanswered: 21, 22, 23 Sep",
+      "New query: nausea since yesterday (routed to care team)",
+      "New report uploaded: CBC, 20 Sep"
+    ],
+    "upcoming": ["Teleconsult 26 Sep 11:00"]
+  }
+}

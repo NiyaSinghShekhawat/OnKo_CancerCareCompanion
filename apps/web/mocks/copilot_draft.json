@@ -1,0 +1,52 @@
+{
+  "id": "draft_demo",
+  "patient_id": "p_rajesh",
+  "raw_text": "Cycle 5 chemo on 15 Oct. Capecitabine 500mg BD after food for 14 days. CBC on 13 Oct. Review on 16 Oct.",
+  "items": [
+    {
+      "type": "TREATMENT",
+      "title": "Chemotherapy Cycle 5",
+      "details": {},
+      "start_date": "2026-10-15",
+      "end_date": null,
+      "recurrence": null,
+      "source_span": "Cycle 5 chemo on 15 Oct"
+    },
+    {
+      "type": "MEDICATION",
+      "title": "Capecitabine 500mg",
+      "details": {
+        "dose": "500 mg",
+        "frequency": "twice daily",
+        "timing": "after food"
+      },
+      "start_date": "2026-10-15",
+      "end_date": "2026-10-28",
+      "recurrence": "daily 09:00, 21:00",
+      "source_span": "Capecitabine 500mg BD after food for 14 days"
+    },
+    {
+      "type": "INVESTIGATION",
+      "title": "CBC",
+      "details": {},
+      "start_date": "2026-10-13",
+      "end_date": null,
+      "recurrence": null,
+      "source_span": "CBC on 13 Oct"
+    },
+    {
+      "type": "APPOINTMENT",
+      "title": "Review",
+      "details": {},
+      "start_date": "2026-10-16",
+      "end_date": null,
+      "recurrence": null,
+      "source_span": "Review on 16 Oct"
+    }
+  ],
+  "status": "DRAFT",
+  "created_by": "doc_mehta",
+  "created_at": "2026-09-30T09:00:00",
+  "warnings": [],
+  "ok": true
+}

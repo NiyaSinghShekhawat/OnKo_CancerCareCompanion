@@ -1,0 +1,39 @@
+[
+  {
+    "id": "4cdeb4f2b9de",
+    "patient_id": "p_rajesh",
+    "patient_name": "Rajesh Kumar",
+    "label": "NEEDS_REVIEW",
+    "reasons": [
+      "Medication reported missed: Capecitabine evening dose",
+      "New report awaiting review: CBC — 20 Sep"
+    ],
+    "status": "PENDING",
+    "assigned_to": null,
+    "created_at": "2026-09-30T08:54:25.695792"
+  },
+  {
+    "id": "8a1432c1f4d7",
+    "patient_id": "p_rajesh",
+    "patient_name": "Rajesh Kumar",
+    "label": "QUERY",
+    "reasons": [
+      "New patient concern logged: nausea since yesterday"
+    ],
+    "status": "PENDING",
+    "assigned_to": null,
+    "created_at": "2026-09-30T08:54:25.695802"
+  },
+  {
+    "id": "9ace025bed10",
+    "patient_id": "p_arjun",
+    "patient_name": "Arjun Reddy",
+    "label": "FOLLOW_UP",
+    "reasons": [
+      "3 consecutive daily check-ins unanswered"
+    ],
+    "status": "PENDING",
+    "assigned_to": null,
+    "created_at": "2026-09-30T08:54:25.695806"
+  }
+]

@@ -1,0 +1,49 @@
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from core.db import get_db
+from core.auth import get_actor, require
+from core.models import AttentionItem, Patient, PatientQuery, Report, CareEvent
+from core.serialize import to_dict
+from core.services import audit
+
+router = APIRouter(tags=["attention"])
+ORDER = {"SOS": 0, "NEEDS_REVIEW": 1, "QUERY": 2, "FOLLOW_UP": 3}
+
+
+@router.get("/attention")
+def list_attention(db=Depends(get_db)):
+    items = db.query(AttentionItem).filter(AttentionItem.status != "CLOSED").all()
+    items.sort(key=lambda i: (ORDER.get(i.label, 9), i.created_at))
+    return [to_dict(i) for i in items]
+
+
+class AttentionUpdate(BaseModel):
+    status: str
+    assigned_to: str | None = None
+
+
+@router.patch("/attention/{aid}")
+def update_attention(aid: str, body: AttentionUpdate, db=Depends(get_db), actor=Depends(get_actor)):
+    require(actor, "doctor", "care_team")
+    a = db.get(AttentionItem, aid)
+    if not a:
+        raise HTTPException(404, "Not found")
+    before = {"status": a.status, "assigned_to": a.assigned_to}
+    a.status = body.status
+    if body.assigned_to is not None:
+        a.assigned_to = body.assigned_to
+    audit.log(db, actor, "attention_update", "attention_item", a.id, before, body.model_dump())
+    db.commit()
+    return to_dict(a)
+
+
+@router.get("/dashboard/overview")
+def overview(db=Depends(get_db)):
+    return {
+        "active_patients": db.query(Patient).filter(Patient.journey_state != "DECEASED").count(),
+        "consultations_today": db.query(CareEvent).filter_by(type="APPOINTMENT", status="CURRENT").count(),
+        "missed_activities": db.query(CareEvent).filter(CareEvent.status.in_(["REPORTED_MISSED", "NO_RESPONSE"])).count(),
+        "open_queries": db.query(PatientQuery).filter(PatientQuery.status != "RESOLVED").count(),
+        "reports_pending_review": db.query(Report).filter_by(reviewed=False).count(),
+        "sos_open": db.query(AttentionItem).filter_by(label="SOS").filter(AttentionItem.status != "CLOSED").count(),
+    }

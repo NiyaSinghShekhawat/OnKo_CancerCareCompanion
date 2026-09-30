@@ -1,0 +1,7 @@
+# Replace @niya-github-username with Niya's actual GitHub handle
+/apps/api/core/        @SampradaReddy
+/apps/web/             @niya-github-username
+/apps/api/ai/          @Shreyan2745
+/apps/api/whatsapp/    @Shreyan2745
+/contracts/            @SampradaReddy @niya-github-username @Shreyan2745
+/apps/api/main.py      @SampradaReddy @niya-github-username @Shreyan2745

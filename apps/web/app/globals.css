@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { @apply bg-onko-mint text-onko-ink antialiased; }
+:focus-visible { outline: 2px solid #0F5F5C; outline-offset: 2px; }

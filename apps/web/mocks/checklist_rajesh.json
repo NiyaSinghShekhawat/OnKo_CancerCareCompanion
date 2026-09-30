@@ -1,0 +1,54 @@
+{
+  "patient_id": "p_rajesh",
+  "date": "2026-09-30",
+  "items": [
+    {
+      "id": "baf7ddb7efe3",
+      "patient_id": "p_rajesh",
+      "type": "TREATMENT",
+      "title": "Chemotherapy Cycle 4 (Day 1)",
+      "details": {
+        "location": "Day Care Centre",
+        "instructions": "Pre-medication: Dexamethasone & Ondansetron"
+      },
+      "scheduled_at": "2026-09-30T09:00:00",
+      "status": "CURRENT",
+      "response_state": null,
+      "responded_at": null,
+      "source": "doctor",
+      "care_plan_item_id": null
+    },
+    {
+      "id": "4f95a01895c8",
+      "patient_id": "p_rajesh",
+      "type": "MILESTONE",
+      "title": "Daily 15-min walk",
+      "details": {},
+      "scheduled_at": "2026-09-30T18:00:00",
+      "status": "UPCOMING",
+      "response_state": null,
+      "responded_at": null,
+      "source": "doctor",
+      "care_plan_item_id": null
+    },
+    {
+      "id": "c1b7fd2fda78",
+      "patient_id": "p_rajesh",
+      "type": "MEDICATION",
+      "title": "Capecitabine 500mg",
+      "details": {
+        "dose": "500 mg",
+        "frequency": "twice daily",
+        "timing": "after food"
+      },
+      "scheduled_at": "2026-09-30T21:00:00",
+      "status": "UPCOMING",
+      "response_state": null,
+      "responded_at": null,
+      "source": "doctor",
+      "care_plan_item_id": null
+    }
+  ],
+  "window_closes_at": "2026-10-01T00:00:00",
+  "sent": false
+}

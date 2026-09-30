@@ -1,0 +1,7 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/apps/api/.venv/bin/python",
+  "python.analysis.extraPaths": ["${workspaceFolder}/apps/api"],
+  "editor.formatOnSave": true,
+  "files.exclude": { "**/__pycache__": true, "**/.next": true },
+  "search.exclude": { "**/node_modules": true, "**/.next": true, "**/.venv": true }
+}

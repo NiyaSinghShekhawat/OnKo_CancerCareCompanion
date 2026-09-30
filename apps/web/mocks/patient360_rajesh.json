@@ -1,0 +1,201 @@
+{
+  "patient": {
+    "id": "p_rajesh",
+    "name": "Rajesh Kumar",
+    "age": 54,
+    "gender": "M",
+    "abha_id": "91-1234-5678-9012",
+    "phone_whatsapp": "whatsapp:+910000000000",
+    "preferred_language": "Hindi",
+    "diagnosis_label": "Stage III Colorectal Adenocarcinoma",
+    "regimen_label": "CAPOX",
+    "cycle_current": 4,
+    "cycle_total": 8,
+    "journey_state": "ACTIVE_TREATMENT",
+    "doctor_id": "doc_mehta",
+    "last_reviewed_at": "2026-09-24T09:00:00",
+    "created_at": "2026-09-30T08:54:25.692794"
+  },
+  "care_plan": [],
+  "timeline": [
+    {
+      "id": "872101ff5f6d",
+      "patient_id": "p_rajesh",
+      "type": "INVESTIGATION",
+      "title": "CBC",
+      "details": {},
+      "scheduled_at": "2026-09-26T09:00:00",
+      "status": "COMPLETED",
+      "response_state": "COMPLETED",
+      "responded_at": null,
+      "source": "doctor",
+      "care_plan_item_id": null
+    },
+    {
+      "id": "52f5e6f26316",
+      "patient_id": "p_rajesh",
+      "type": "MEDICATION",
+      "title": "Capecitabine 500mg",
+      "details": {
+        "dose": "500 mg",
+        "frequency": "twice daily",
+        "timing": "after food"
+      },
+      "scheduled_at": "2026-09-29T21:00:00",
+      "status": "REPORTED_MISSED",
+      "response_state": "REPORTED_MISSED",
+      "responded_at": null,
+      "source": "doctor",
+      "care_plan_item_id": null
+    },
+    {
+      "id": "baf7ddb7efe3",
+      "patient_id": "p_rajesh",
+      "type": "TREATMENT",
+      "title": "Chemotherapy Cycle 4 (Day 1)",
+      "details": {
+        "location": "Day Care Centre",
+        "instructions": "Pre-medication: Dexamethasone & Ondansetron"
+      },
+      "scheduled_at": "2026-09-30T09:00:00",
+      "status": "CURRENT",
+      "response_state": null,
+      "responded_at": null,
+      "source": "doctor",
+      "care_plan_item_id": null
+    },
+    {
+      "id": "4f95a01895c8",
+      "patient_id": "p_rajesh",
+      "type": "MILESTONE",
+      "title": "Daily 15-min walk",
+      "details": {},
+      "scheduled_at": "2026-09-30T18:00:00",
+      "status": "UPCOMING",
+      "response_state": null,
+      "responded_at": null,
+      "source": "doctor",
+      "care_plan_item_id": null
+    },
+    {
+      "id": "c1b7fd2fda78",
+      "patient_id": "p_rajesh",
+      "type": "MEDICATION",
+      "title": "Capecitabine 500mg",
+      "details": {
+        "dose": "500 mg",
+        "frequency": "twice daily",
+        "timing": "after food"
+      },
+      "scheduled_at": "2026-09-30T21:00:00",
+      "status": "UPCOMING",
+      "response_state": null,
+      "responded_at": null,
+      "source": "doctor",
+      "care_plan_item_id": null
+    },
+    {
+      "id": "e95adb5c5e92",
+      "patient_id": "p_rajesh",
+      "type": "APPOINTMENT",
+      "title": "Teleconsult with Dr. Mehta",
+      "details": {},
+      "scheduled_at": "2026-10-02T11:00:00",
+      "status": "UPCOMING",
+      "response_state": null,
+      "responded_at": null,
+      "source": "doctor",
+      "care_plan_item_id": null
+    }
+  ],
+  "open_queries": [
+    {
+      "id": "14e3d143ebb9",
+      "patient_id": "p_rajesh",
+      "text": "Feeling nauseous since yesterday, mild discomfort",
+      "channel": "whatsapp",
+      "category": "SYMPTOM_CONCERN",
+      "summary": "Patient reports nausea since yesterday and mild discomfort.",
+      "route_to": "care_team_queue",
+      "status": "OPEN",
+      "response": null,
+      "created_at": "2026-09-30T08:54:25.699922"
+    }
+  ],
+  "reports": [
+    {
+      "id": "a86d98c9a226",
+      "patient_id": "p_rajesh",
+      "title": "CBC — 20 Sep",
+      "text": "Haemoglobin 9.2 g/dL (12-15)\nWBC 4.1 x10^9/L (4-11)\nPlatelets 180 x10^9/L (150-400)",
+      "extracted_values": [
+        {
+          "name": "Hb",
+          "value": "9.2",
+          "unit": "g/dL",
+          "reference_range_as_printed": "12-15",
+          "source_line": "Haemoglobin 9.2 g/dL (12-15)"
+        }
+      ],
+      "uploaded_by_role": "caregiver",
+      "uploaded_at": "2026-09-30T08:54:25.700551",
+      "reviewed": false
+    }
+  ],
+  "caregivers": [
+    {
+      "id": "2162fe1b1ec0",
+      "patient_id": "p_rajesh",
+      "name": "Sunita Kumar",
+      "relation": "Wife",
+      "phone_whatsapp": "whatsapp:+910000000010",
+      "type": "family",
+      "consent_status": "GRANTED",
+      "permissions": {
+        "view_journey": true,
+        "upload_reports": true,
+        "receive_escalations": true
+      }
+    }
+  ],
+  "attention": [
+    {
+      "id": "4cdeb4f2b9de",
+      "patient_id": "p_rajesh",
+      "patient_name": "Rajesh Kumar",
+      "label": "NEEDS_REVIEW",
+      "reasons": [
+        "Medication reported missed: Capecitabine evening dose",
+        "New report awaiting review: CBC — 20 Sep"
+      ],
+      "status": "PENDING",
+      "assigned_to": null,
+      "created_at": "2026-09-30T08:54:25.695792"
+    },
+    {
+      "id": "8a1432c1f4d7",
+      "patient_id": "p_rajesh",
+      "patient_name": "Rajesh Kumar",
+      "label": "QUERY",
+      "reasons": [
+        "New patient concern logged: nausea since yesterday"
+      ],
+      "status": "PENDING",
+      "assigned_to": null,
+      "created_at": "2026-09-30T08:54:25.695802"
+    }
+  ],
+  "since_last_review": {
+    "ok": true,
+    "since": "2026-09-24T09:00:00",
+    "bullets": [
+      "Completed: CBC",
+      "Reported missed: Capecitabine 500mg evening dose",
+      "New query: nausea since yesterday (routed to care team)",
+      "New report uploaded: CBC — 20 Sep"
+    ],
+    "upcoming": [
+      "Teleconsult with Dr. Mehta in 2 days"
+    ]
+  }
+}

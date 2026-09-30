@@ -1,0 +1,98 @@
+{
+  "_note": "Shared entity shapes. Backend models, frontend types and mocks must match these field names exactly.",
+
+  "enums": {
+    "Role": ["doctor", "patient", "caregiver", "care_team"],
+    "EventType": ["MEDICATION", "INVESTIGATION", "TREATMENT", "APPOINTMENT", "MILESTONE"],
+    "EventStatus": ["UPCOMING", "CURRENT", "COMPLETED", "REPORTED_MISSED", "NO_RESPONSE", "RESCHEDULED", "CONFLICTING"],
+    "ResponseState": ["COMPLETED", "REPORTED_MISSED", "DELAYED_RESPONSE", "NO_RESPONSE", "CONFLICTING"],
+    "JourneyState": ["ACTIVE_TREATMENT", "REMISSION_SURVIVORSHIP", "RELAPSE", "TRANSFER_OF_CARE", "PALLIATIVE", "DECEASED"],
+    "AttentionLabel": ["NEEDS_REVIEW", "FOLLOW_UP", "QUERY", "SOS"],
+    "AttentionStatus": ["PENDING", "ACKNOWLEDGED", "HANDLED", "CLOSED"],
+    "QueryCategory": ["ADMINISTRATIVE", "MEDICATION", "SYMPTOM_CONCERN"],
+    "QueryStatus": ["OPEN", "IN_REVIEW", "ESCALATED", "RESOLVED"],
+    "ConsentStatus": ["PENDING", "GRANTED", "REVOKED"],
+    "DraftStatus": ["DRAFT", "APPROVED", "REJECTED"],
+    "Channel": ["whatsapp", "app"]
+  },
+
+  "Patient": {
+    "id": "string", "name": "string", "age": "number", "gender": "string",
+    "abha_id": "string|null", "phone_whatsapp": "string", "preferred_language": "string",
+    "diagnosis_label": "string (doctor-entered, displayed as-is)",
+    "regimen_label": "string", "cycle_current": "number", "cycle_total": "number",
+    "journey_state": "JourneyState", "doctor_id": "string",
+    "last_reviewed_at": "ISO datetime|null", "created_at": "ISO datetime"
+  },
+
+  "CareEvent": {
+    "id": "string", "patient_id": "string", "type": "EventType",
+    "title": "string", "details": "object (dose, frequency, timing, location, instructions — as entered)",
+    "scheduled_at": "ISO datetime", "status": "EventStatus",
+    "response_state": "ResponseState|null", "responded_at": "ISO datetime|null",
+    "source": "doctor|copilot_approved|patient|caregiver|system",
+    "care_plan_item_id": "string|null"
+  },
+
+  "CarePlanItem": {
+    "id": "string", "patient_id": "string", "type": "EventType", "title": "string",
+    "details": "object", "start_date": "ISO date", "end_date": "ISO date|null",
+    "recurrence": "string|null (e.g. 'daily 09:00', 'every 21 days')",
+    "approved_by": "string", "approved_at": "ISO datetime"
+  },
+
+  "CarePlanDraft": {
+    "id": "string", "patient_id": "string", "raw_text": "string",
+    "items": "CopilotItem[] (see ai_outputs.json)", "status": "DraftStatus",
+    "created_by": "string", "created_at": "ISO datetime"
+  },
+
+  "DailyChecklist": {
+    "patient_id": "string", "date": "ISO date",
+    "items": "CareEvent[]", "window_closes_at": "ISO datetime", "sent": "boolean"
+  },
+
+  "AttentionItem": {
+    "id": "string", "patient_id": "string", "patient_name": "string",
+    "label": "AttentionLabel", "reasons": "string[] (plain factual reasons, e.g. 'Medication reported missed: Capecitabine evening dose, 23 Sep')",
+    "status": "AttentionStatus", "assigned_to": "string|null",
+    "created_at": "ISO datetime"
+  },
+
+  "PatientQuery": {
+    "id": "string", "patient_id": "string", "text": "string", "channel": "Channel",
+    "category": "QueryCategory", "summary": "string", "route_to": "admin_queue|care_team_queue|doctor",
+    "status": "QueryStatus", "response": "string|null", "created_at": "ISO datetime"
+  },
+
+  "Report": {
+    "id": "string", "patient_id": "string", "title": "string", "text": "string",
+    "extracted_values": "ExtractedValue[] (see ai_outputs.json)",
+    "uploaded_by_role": "Role", "uploaded_at": "ISO datetime", "reviewed": "boolean"
+  },
+
+  "Caregiver": {
+    "id": "string", "patient_id": "string", "name": "string", "relation": "string",
+    "phone_whatsapp": "string", "type": "family|professional",
+    "consent_status": "ConsentStatus",
+    "permissions": { "view_journey": "boolean", "upload_reports": "boolean", "receive_escalations": "boolean" }
+  },
+
+  "Patient360": {
+    "patient": "Patient", "care_plan": "CarePlanItem[]", "timeline": "CareEvent[]",
+    "open_queries": "PatientQuery[]", "reports": "Report[]", "caregivers": "Caregiver[]",
+    "attention": "AttentionItem[]", "since_last_review": "ReviewSummary"
+  },
+
+  "DashboardOverview": {
+    "active_patients": "number", "consultations_today": "number",
+    "missed_activities": "number", "open_queries": "number",
+    "reports_pending_review": "number", "sos_open": "number"
+  },
+
+  "AuditLog": {
+    "id": "string", "actor_id": "string", "actor_role": "Role", "action": "string",
+    "entity_type": "string", "entity_id": "string", "before": "object|null", "after": "object|null",
+    "timestamp": "ISO datetime"
+  }
+}
