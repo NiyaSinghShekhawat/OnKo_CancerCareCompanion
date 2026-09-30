@@ -25,7 +25,7 @@ export default function PatientShell({patient,children}:{patient:{id:string;name
  const initials=patient.name.split(" ").map(x=>x[0]).join("").slice(0,2);
  const active=(href:string)=>href==="/patient"?path===href:path.startsWith(href);
  return <div className="min-h-screen bg-[#ECFAF7] text-onko-ink">
-  <header className="fixed inset-x-0 top-0 z-50 border-b border-[#D7EEEA] bg-[#ECFAF7]/95 backdrop-blur">
+  <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-onko-teal">Skip to content</a><header className="fixed inset-x-0 top-0 z-50 border-b border-[#D7EEEA] bg-[#ECFAF7]/95 backdrop-blur">
    <div className="mx-auto flex h-[70px] max-w-[1440px] items-center gap-4 px-4 sm:px-6 lg:h-[82px] lg:px-10">
     <Link href="/patient" className="flex shrink-0 items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-white text-[13px] font-bold text-onko-teal shadow-sm lg:h-11 lg:w-11">OnKo</span><div className="hidden xl:block"><strong className="text-[14px]">{patient.name}</strong><p className="max-w-[180px] truncate text-[11px] text-onko-muted">{patient.regimen_label} · cycle {patient.cycle_current}</p></div></Link>
     <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex lg:gap-2">{primary.map(n=>{const I=n.icon;return <Link key={n.href} href={n.href} className={"flex items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition lg:px-4 lg:text-[14px] "+(active(n.href)?"bg-white text-onko-teal shadow-sm":"text-onko-muted hover:bg-white/70 hover:text-onko-ink")}><I size={17}/><span>{n.label}</span></Link>})}</nav>
@@ -34,7 +34,7 @@ export default function PatientShell({patient,children}:{patient:{id:string;name
     </div></div>
    </div>
   </header>
-  <main className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-[94px] sm:px-6 md:pb-12 md:pt-[98px] lg:px-10 lg:pt-[114px]">{children}</main>
+  <main id="main-content" className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-[94px] sm:px-6 md:pb-12 md:pt-[98px] lg:px-10 lg:pt-[114px]">{children}</main>
   <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[#D7EEEA] bg-[#F4FCFA]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"><div className="mx-auto grid h-[76px] max-w-xl grid-cols-5 items-center px-1">{primary.map(n=>{const I=n.icon;return <Link key={n.href} href={n.href} className={"flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] font-semibold "+(active(n.href)?"text-onko-teal":"text-onko-muted")}><I size={21}/><span className="truncate">{n.label}</span></Link>})}</div></nav>
  </div>
 }
