@@ -2,5 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-body { @apply bg-onko-mint text-onko-ink antialiased; }
-:focus-visible { outline: 2px solid #0F5F5C; outline-offset: 2px; }
+:root {
+  color-scheme: light;
+  --onko-canvas: #F4F6F5;
+  --onko-card: #FFFFFF;
+  --onko-surface: #F8FAF9;
+  --onko-hover: #EEF1F0;
+  --onko-line: #E1E6E4;
+  --onko-teal: #006761;
+  --onko-teal-accent: #00837B;
+  --onko-soft-teal: #E5F3F1;
+  --onko-ink: #17201E;
+  --onko-muted: #53605D;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--onko-canvas); }
+body {
+  margin: 0;
+  background: var(--onko-canvas);
+  color: var(--onko-ink);
+  @apply antialiased;
+}
+::selection { background: var(--onko-soft-teal); color: var(--onko-ink); }
+:focus-visible { outline: 2px solid var(--onko-teal); outline-offset: 2px; }
+
+@layer components {
+  .onko-card { @apply rounded-2xl border border-onko-line bg-white shadow-card; }
+  .onko-eyebrow { @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-onko-muted; }
+  .onko-chip { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold; }
+  .onko-button-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-onko-teal px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-onko-tealdark; }
+  .onko-button-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-onko-line bg-white px-4 py-2.5 text-sm font-semibold text-onko-ink transition hover:bg-onko-hover; }
+}
