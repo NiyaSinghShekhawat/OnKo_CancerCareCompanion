@@ -49,7 +49,8 @@
 
   "DailyChecklist": {
     "patient_id": "string", "date": "ISO date",
-    "items": "CareEvent[]", "window_closes_at": "ISO datetime", "sent": "boolean"
+    "items": "CareEvent[]", "window_closes_at": "ISO datetime", "sent": "boolean",
+    "paused": "boolean", "reason": "string|null"
   },
 
   "AttentionItem": {
