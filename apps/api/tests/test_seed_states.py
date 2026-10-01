@@ -12,7 +12,7 @@ from core.models import AttentionItem, CarePlanDraft, CareEvent, Caregiver, Pati
 from core.services import attention
 from main import app
 
-c = TestClient(app)
+c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
 DOCTOR = {"X-Role": "doctor", "X-User-Id": "doc_mehta"}
 NEW = {"p_meera": "PALLIATIVE", "p_vikram": "TRANSFER_OF_CARE", "p_farhan": "RELAPSE", "p_kamala": "DECEASED"}
 INTERPRETATION = re.compile(r"worsen|improv|concern(?!\s+logged)|risk|severe|critical|deteriorat|prognos|terminal|"

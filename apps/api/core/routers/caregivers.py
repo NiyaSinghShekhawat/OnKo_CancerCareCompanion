@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor, require
+from core.auth import get_actor, require, require_patient_access
 from core.models import Caregiver, CareEvent, Patient
 from core.serialize import to_dict
 from core.services import audit, journey_state, review
@@ -18,12 +18,14 @@ class CaregiverIn(BaseModel):
 
 
 @router.get("/patients/{pid}/caregivers")
-def list_cg(pid: str, db=Depends(get_db)):
+def list_cg(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, pid, db)
     return [to_dict(c) for c in db.query(Caregiver).filter_by(patient_id=pid)]
 
 
 @router.post("/patients/{pid}/caregivers")
 def invite(pid: str, body: CaregiverIn, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, pid, db, allow_caregivers=False)   # caregivers can't add caregivers
     cg = Caregiver(patient_id=pid, **body.model_dump(), consent_status="PENDING")
     db.add(cg)
     db.flush()
@@ -42,6 +44,7 @@ def update_cg(cid: str, body: CaregiverUpdate, db=Depends(get_db), actor=Depends
     cg = db.get(Caregiver, cid)
     if not cg:
         raise HTTPException(404, "Not found")
+    require_patient_access(actor, cg.patient_id, db, allow_caregivers=False)   # no granting yourself permissions
     before = {"consent_status": cg.consent_status, "permissions": cg.permissions}
     if body.consent_status:
         cg.consent_status = body.consent_status

@@ -11,7 +11,7 @@ from core.models import AttentionItem, AuditLog, CareEvent, Patient, PatientQuer
 from core.services import attention, journey_state
 from main import app
 
-c = TestClient(app)
+c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
 DOCTOR = {"X-Role": "doctor", "X-User-Id": "doc_mehta"}
 
 

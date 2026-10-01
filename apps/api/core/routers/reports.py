@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor, require
+from core.auth import STAFF, get_actor, require, require_patient_access
 from core.models import Report, Patient, Caregiver
 from core.serialize import to_dict
 from core.services import audit, attention
@@ -18,6 +18,7 @@ class ReportIn(BaseModel):
 
 @router.post("/patients/{pid}/reports")
 def upload(pid: str, body: ReportIn, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, pid, db)
     p = db.get(Patient, pid)
     if not p:
         raise HTTPException(404, "Patient not found")
@@ -37,13 +38,14 @@ def upload(pid: str, body: ReportIn, db=Depends(get_db), actor=Depends(get_actor
 
 
 @router.get("/patients/{pid}/reports")
-def list_reports(pid: str, db=Depends(get_db)):
+def list_reports(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, pid, db)
     return [to_dict(r) for r in db.query(Report).filter_by(patient_id=pid)]
 
 
 @router.patch("/reports/{report_id}/reviewed")
 def mark_reviewed(report_id: str, db=Depends(get_db), actor=Depends(get_actor)):
-    require(actor, "doctor", "care_team")
+    require(actor, *STAFF)
     r = db.get(Report, report_id)
     if not r:
         raise HTTPException(404, "Report not found")

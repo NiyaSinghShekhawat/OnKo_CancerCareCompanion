@@ -10,7 +10,7 @@ from core.db import SessionLocal
 from core.models import CareEvent
 from main import app
 
-c = TestClient(app)
+c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
 
 
 @pytest.fixture(autouse=True)

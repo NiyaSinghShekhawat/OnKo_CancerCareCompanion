@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor
+from core.auth import get_actor, require_patient_access
 from core.models import Patient
 from core.serialize import to_dict
 from core.services import audit, attention, journey_state
@@ -34,4 +34,5 @@ def trigger_sos(db, actor, patient_id: str, channel: str, note: str | None = Non
 
 @router.post("/sos")
 def sos(body: SOSIn, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, body.patient_id, db)
     return to_dict(trigger_sos(db, actor, body.patient_id, body.channel, body.note))

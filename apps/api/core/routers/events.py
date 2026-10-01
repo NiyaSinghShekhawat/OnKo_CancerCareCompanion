@@ -2,7 +2,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor, require
+from core.auth import get_actor, require, require_patient_access
 from core.models import CareEvent, Patient
 from core.serialize import to_dict
 from core.services import audit, checklist, attention, journey_state
@@ -18,9 +18,11 @@ class StatusIn(BaseModel):
 
 @router.patch("/events/{event_id}/status")
 def set_status(event_id: str, body: StatusIn, db=Depends(get_db), actor=Depends(get_actor)):
+    """Also called by whatsapp/webhook.py with Actor("patient", <that patient>), which passes the check."""
     e = db.get(CareEvent, event_id)
     if not e:
         raise HTTPException(404, "Event not found")
+    require_patient_access(actor, e.patient_id, db)
     before = e.status
     e.status = body.status
     e.response_state = body.status if body.status in {"COMPLETED", "REPORTED_MISSED", "CONFLICTING"} else e.response_state
@@ -33,7 +35,8 @@ def set_status(event_id: str, body: StatusIn, db=Depends(get_db), actor=Depends(
 
 
 @router.get("/patients/{pid}/checklist/today")
-def today(pid: str, db=Depends(get_db)):
+def today(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, pid, db)
     items, closes = checklist.todays_items(db, pid)
     p = db.get(Patient, pid)
     paused = bool(p) and journey_state.checklist_paused(p.journey_state)
@@ -44,7 +47,8 @@ def today(pid: str, db=Depends(get_db)):
 
 
 @router.post("/demo/advance-day")
-def advance_day(db=Depends(get_db)):
+def advance_day(db=Depends(get_db), actor=Depends(get_actor)):
+    require(actor, "doctor")   # changes every patient's events and attention, like /demo/reset
     now = datetime.utcnow()
     stale = checklist.close_window(db, now)
     for p in db.query(Patient).all():
