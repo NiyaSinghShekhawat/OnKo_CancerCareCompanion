@@ -53,6 +53,7 @@ Shapes of every entity live in `schemas.json`. AI output shapes live in `ai_outp
 |---|---|---|
 | POST | `/patients/{id}/reports` | body `{ title, text, uploaded_by_role }` → `Report` (values extracted by `ai.extract`) |
 | GET | `/patients/{id}/reports` | `Report[]` |
+| PATCH | `/reports/{id}/reviewed` | sets `reviewed = true`, clears its NEEDS_REVIEW reason → `Report` (doctor / care_team only) |
 
 ## SOS — owner: Samprada (`core/routers/sos.py`)
 | Method | Path | Returns |
