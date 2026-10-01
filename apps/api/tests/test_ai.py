@@ -159,3 +159,23 @@ def test_summary_rejects_llm_invented_numbers(monkeypatch):
 
 def test_client_without_key_returns_none():
     assert client.call_json("x", "y") is None
+
+
+def test_gemini_key_sent_as_header_and_never_logged(monkeypatch, capsys):
+    import httpx
+    secret = "AIzaSy-TEST-SECRET-123456"
+    monkeypatch.setenv("AI_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", secret)
+    seen = {}
+
+    def fake_post(url, params=None, headers=None, **kw):
+        seen["url"], seen["params"], seen["headers"] = url, params, headers
+        req = httpx.Request("POST", url, params=params)
+        raise httpx.HTTPStatusError(f"400 Bad Request for url {req.url} key={secret}", request=req,
+                                    response=httpx.Response(400, request=req))
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    assert client.call_json("sys", "user") is None
+    assert seen["headers"]["x-goog-api-key"] == secret
+    assert secret not in seen["url"] and not seen["params"]
+    assert secret not in capsys.readouterr().out
