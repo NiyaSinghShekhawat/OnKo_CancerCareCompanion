@@ -64,7 +64,7 @@ def _gemini(system: str, user: str) -> str:
     model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     r = httpx.post(
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-        params={"key": os.getenv("GEMINI_API_KEY")},
+        headers={"x-goog-api-key": os.getenv("GEMINI_API_KEY", "")},   # never in the URL: URLs end up in error logs
         json={
             "system_instruction": {"parts": [{"text": system + _JSON_RULE}]},
             "contents": [{"role": "user", "parts": [{"text": user}]}],
@@ -75,6 +75,15 @@ def _gemini(system: str, user: str) -> str:
     r.raise_for_status()
     parts = r.json()["candidates"][0]["content"]["parts"]
     return "".join(p.get("text", "") for p in parts)
+
+
+def _redact(text: str) -> str:
+    """Mask any API key that might appear in an error message before it is printed."""
+    for var in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY"):
+        key = os.getenv(var)
+        if key and len(key) > 8:
+            text = text.replace(key, f"<{var} redacted>")
+    return re.sub(r"([?&]key=)[^&\s'\"]+", r"\1<redacted>", text)
 
 
 def call_json(system: str, user: str) -> dict | None:
@@ -89,7 +98,7 @@ def call_json(system: str, user: str) -> dict | None:
                 return out
             print(f"[ai.client] reply was not valid JSON (attempt {attempt + 1})")
         except Exception as e:  # noqa: BLE001
-            print(f"[ai.client] {_provider()} error: {e}")
+            print(f"[ai.client] {_provider()} error: {_redact(str(e))}")
             return None
     return None
 
