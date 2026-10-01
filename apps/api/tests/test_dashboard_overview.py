@@ -69,10 +69,10 @@ def test_excludes_other_event_types_today():
 
 def test_other_counts_unchanged():
     assert c.get("/dashboard/overview").json() == {
-        "active_patients": 4,
+        "active_patients": 7,            # 8 seeded, Kamala is DECEASED
         "consultations_today": 0,
-        "missed_activities": 4,          # 1 reported missed + 3 no-response check-ins
-        "open_queries": 1,
+        "missed_activities": 5,          # Rajesh 1 reported missed + Arjun 3 no-response + Meera 1 reported missed
+        "open_queries": 2,               # Rajesh, Meera
         "reports_pending_review": 1,
         "sos_open": 0,
     }

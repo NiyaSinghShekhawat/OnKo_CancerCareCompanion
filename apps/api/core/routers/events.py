@@ -5,7 +5,7 @@ from core.db import get_db
 from core.auth import get_actor, require
 from core.models import CareEvent, Patient
 from core.serialize import to_dict
-from core.services import audit, checklist, attention
+from core.services import audit, checklist, attention, journey_state
 from core import seed
 
 router = APIRouter(tags=["events"])
@@ -35,8 +35,12 @@ def set_status(event_id: str, body: StatusIn, db=Depends(get_db), actor=Depends(
 @router.get("/patients/{pid}/checklist/today")
 def today(pid: str, db=Depends(get_db)):
     items, closes = checklist.todays_items(db, pid)
+    p = db.get(Patient, pid)
+    paused = bool(p) and journey_state.checklist_paused(p.journey_state)
     return {"patient_id": pid, "date": datetime.utcnow().date().isoformat(),
-            "items": [to_dict(i) for i in items], "window_closes_at": closes.isoformat(), "sent": False}
+            "items": [] if paused else [to_dict(i) for i in items],
+            "window_closes_at": closes.isoformat(), "sent": False,
+            "paused": paused, "reason": f"Journey state {p.journey_state}" if paused else None}
 
 
 @router.post("/demo/advance-day")

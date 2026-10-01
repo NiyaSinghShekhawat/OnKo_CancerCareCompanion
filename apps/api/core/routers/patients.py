@@ -5,7 +5,7 @@ from core.db import get_db
 from core.auth import get_actor, require
 from core.models import Patient, CareEvent, CarePlanItem, PatientQuery, Report, Caregiver, AttentionItem
 from core.serialize import to_dict
-from core.services import attention, audit, review
+from core.services import attention, audit, journey_state, review
 from ai.summarize import since_last_review
 
 router = APIRouter(tags=["patients"])
@@ -94,9 +94,16 @@ def set_journey_state(pid: str, body: JourneyStateIn, db=Depends(get_db), actor=
     if not p:
         raise HTTPException(404, "Patient not found")
     before = p.journey_state
+    if body.state != before:
+        p.journey_state_changed_at = datetime.utcnow()
+        p.previous_journey_state = before
     p.journey_state = body.state
     audit.log(db, actor, "journey_state_change", "patient", pid, {"state": before}, {"state": body.state, "reason": body.reason})
-    if not attention.adherence_alerts_allowed(p):
-        attention.suppress_adherence(db, p, actor)
+    if body.state != before and journey_state.starts_new_chapter(body.state):
+        # History is kept: earlier events stay in their chapter; only new events get the new number.
+        p.journey_chapter = (p.journey_chapter or 1) + 1
+        audit.log(db, actor, "journey_chapter_started", "patient", pid,
+                  {"journey_chapter": p.journey_chapter - 1}, {"journey_chapter": p.journey_chapter, "state": body.state})
+    attention.apply_journey_state(db, p, actor)
     db.commit()
     return to_dict(p)
