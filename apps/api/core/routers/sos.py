@@ -6,6 +6,7 @@ from core.auth import get_actor
 from core.models import Patient
 from core.serialize import to_dict
 from core.services import audit, attention
+from whatsapp import messages
 
 router = APIRouter(tags=["sos"])
 
@@ -24,7 +25,7 @@ def trigger_sos(db, actor, patient_id: str, channel: str, note: str | None = Non
     item = attention.raise_item(db, p, "SOS", f"Patient-triggered SOS via {channel}")
     db.flush()
     audit.log(db, actor, "sos_triggered", "attention_item", item.id, None, {"channel": channel, "note": note})
-    # TODO(Samprada + Shreyan): notify consented caregivers via whatsapp.messages.notify_caregivers
+    messages.notify_caregivers(db, p, channel)
     db.commit()
     return item
 
