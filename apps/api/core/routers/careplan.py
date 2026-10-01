@@ -1,4 +1,5 @@
 """Care Plan Copilot routes. AI output is only ever a DRAFT until the doctor approves."""
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
@@ -6,9 +7,17 @@ from core.auth import get_actor, require
 from core.models import Patient, CarePlanDraft, CarePlanItem, CareEvent
 from core.serialize import to_dict
 from core.services import audit, recurrence
-from ai.copilot import structure_care_plan
+from ai.copilot import structure_care_plan, end_date_for
 
 router = APIRouter(tags=["careplan"])
+
+
+def _valid_iso(value) -> bool:
+    try:
+        datetime.fromisoformat(value)
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 class DraftIn(BaseModel):
@@ -55,6 +64,12 @@ def approve_draft(draft_id: str, db=Depends(get_db), actor=Depends(get_actor)):
     d = db.get(CarePlanDraft, draft_id)
     if not d or d.status != "DRAFT":
         raise HTTPException(404, "Draft not found or already decided")
+    missing = [it.get("title") or "untitled item" for it in d.items if not _valid_iso(it.get("start_date"))]
+    if missing:
+        raise HTTPException(400, f"Set a start date for: {', '.join(missing)}")
+    for it in d.items:
+        if not it.get("end_date"):
+            it["end_date"] = end_date_for(it)
     created = []
     for it in d.items:
         item = CarePlanItem(patient_id=d.patient_id, type=it["type"], title=it["title"],
