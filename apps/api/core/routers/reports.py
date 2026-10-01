@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor
+from core.auth import get_actor, require
 from core.models import Report, Patient, Caregiver
 from core.serialize import to_dict
 from core.services import audit, attention
@@ -30,7 +30,7 @@ def upload(pid: str, body: ReportIn, db=Depends(get_db), actor=Depends(get_actor
                extracted_values=ext.get("values", []), uploaded_by_role=body.uploaded_by_role)
     db.add(r)
     db.flush()
-    attention.raise_item(db, p, "NEEDS_REVIEW", f"New report awaiting review: {body.title}")
+    attention.raise_item(db, p, "NEEDS_REVIEW", attention.report_reason(body.title))
     audit.log(db, actor, "report_uploaded", "report", r.id, None, {"title": body.title})
     db.commit()
     return to_dict(r)
@@ -39,3 +39,18 @@ def upload(pid: str, body: ReportIn, db=Depends(get_db), actor=Depends(get_actor
 @router.get("/patients/{pid}/reports")
 def list_reports(pid: str, db=Depends(get_db)):
     return [to_dict(r) for r in db.query(Report).filter_by(patient_id=pid)]
+
+
+@router.patch("/reports/{report_id}/reviewed")
+def mark_reviewed(report_id: str, db=Depends(get_db), actor=Depends(get_actor)):
+    require(actor, "doctor", "care_team")
+    r = db.get(Report, report_id)
+    if not r:
+        raise HTTPException(404, "Report not found")
+    if r.reviewed:
+        return to_dict(r)
+    r.reviewed = True
+    attention.clear_reason(db, db.get(Patient, r.patient_id), "NEEDS_REVIEW", attention.report_reason(r.title), actor)
+    audit.log(db, actor, "report_reviewed", "report", r.id, {"reviewed": False}, {"reviewed": True})
+    db.commit()
+    return to_dict(r)

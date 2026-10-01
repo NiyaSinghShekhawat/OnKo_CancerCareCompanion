@@ -5,7 +5,7 @@ from core.db import get_db
 from core.auth import get_actor, require
 from core.models import Patient, CareEvent, CarePlanItem, PatientQuery, Report, Caregiver, AttentionItem
 from core.serialize import to_dict
-from core.services import audit, review
+from core.services import attention, audit, review
 from ai.summarize import since_last_review
 
 router = APIRouter(tags=["patients"])
@@ -96,5 +96,7 @@ def set_journey_state(pid: str, body: JourneyStateIn, db=Depends(get_db), actor=
     before = p.journey_state
     p.journey_state = body.state
     audit.log(db, actor, "journey_state_change", "patient", pid, {"state": before}, {"state": body.state, "reason": body.reason})
+    if not attention.adherence_alerts_allowed(p):
+        attention.suppress_adherence(db, p, actor)
     db.commit()
     return to_dict(p)

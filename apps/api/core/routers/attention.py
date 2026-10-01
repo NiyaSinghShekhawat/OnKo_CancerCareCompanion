@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
@@ -39,9 +40,14 @@ def update_attention(aid: str, body: AttentionUpdate, db=Depends(get_db), actor=
 
 @router.get("/dashboard/overview")
 def overview(db=Depends(get_db)):
+    # "Today" = the UTC calendar day, same as services/checklist.py todays_items
+    start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=1)
     return {
         "active_patients": db.query(Patient).filter(Patient.journey_state != "DECEASED").count(),
-        "consultations_today": db.query(CareEvent).filter_by(type="APPOINTMENT", status="CURRENT").count(),
+        "consultations_today": db.query(CareEvent).filter(
+            CareEvent.type == "APPOINTMENT", CareEvent.status != "RESCHEDULED",
+            CareEvent.scheduled_at >= start, CareEvent.scheduled_at < end).count(),
         "missed_activities": db.query(CareEvent).filter(CareEvent.status.in_(["REPORTED_MISSED", "NO_RESPONSE"])).count(),
         "open_queries": db.query(PatientQuery).filter(PatientQuery.status != "RESOLVED").count(),
         "reports_pending_review": db.query(Report).filter_by(reviewed=False).count(),
