@@ -19,9 +19,14 @@ def adherence_nudges_allowed(state: str) -> bool:
 
 
 # ---- What core does per state (attention queue, daily checklist, 24h window) ----
+NEW_CHAPTER = {"RELAPSE"}                                # switching here starts a new journey chapter
 NO_ATTENTION = {"DECEASED"}                              # no new attention items of any kind
 CHECKLIST_PAUSED = {"TRANSFER_OF_CARE", "DECEASED"}      # empty checklist, window never closes -> no NO_RESPONSE
 ADHERENCE_ALERTS_OFF = {"PALLIATIVE"}                    # no missed-dose / unanswered-check-in items
+
+
+def starts_new_chapter(state: str) -> bool:
+    return state in NEW_CHAPTER
 
 
 def attention_allowed(state: str) -> bool:

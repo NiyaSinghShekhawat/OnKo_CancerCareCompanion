@@ -57,6 +57,7 @@ def _load(db):
     for p in (rajesh, priya, arjun, lakshmi):
         # Current state set well before any seeded event, so advance-day still marks seeded events normally.
         p.journey_state_changed_at = d(-30)
+        p.journey_chapter = 1
     db.add_all([rajesh, priya, arjun, lakshmi])
     db.flush()
 

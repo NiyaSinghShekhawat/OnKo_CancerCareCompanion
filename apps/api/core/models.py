@@ -1,7 +1,7 @@
 """Tables mirror contracts/schemas.json. Field names must stay identical."""
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, JSON, Boolean, Text, ForeignKey
+from sqlalchemy import String, Integer, DateTime, JSON, Boolean, Text, ForeignKey, event, select
 from sqlalchemy.orm import Mapped, mapped_column
 from core.db import Base
 
@@ -33,6 +33,7 @@ class Patient(Base):
     journey_state: Mapped[str] = mapped_column(String, default="ACTIVE_TREATMENT")
     journey_state_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     previous_journey_state: Mapped[str | None] = mapped_column(String, nullable=True)
+    journey_chapter: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     doctor_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -76,6 +77,16 @@ class CareEvent(Base):
     responded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     source: Mapped[str] = mapped_column(String, default="doctor")
     care_plan_item_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    journey_chapter: Mapped[int] = mapped_column(Integer, server_default="1")   # set by _stamp_chapter below
+
+
+@event.listens_for(CareEvent, "before_insert")
+def _stamp_chapter(mapper, connection, target):
+    """Every new CareEvent belongs to its patient's current journey chapter, whichever code path creates it.
+    An explicitly given chapter is kept. Existing events are never re-stamped."""
+    if target.journey_chapter is None:
+        target.journey_chapter = connection.execute(
+            select(Patient.journey_chapter).where(Patient.id == target.patient_id)).scalar() or 1
 
 
 class AttentionItem(Base):
