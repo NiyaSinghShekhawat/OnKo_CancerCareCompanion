@@ -15,7 +15,7 @@ cleaner. Whatever the LLM returns is **checked, not trusted**.
 | `since_last_review` / `pre_consult_brief` | LLM may tidy the bullets | bullets built from records | whole rewrite rejected if it adds any number not in the records or uses banned words |
 
 Config (`.env`): `AI_PROVIDER=anthropic|gemini`, `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`, `AI_MODEL`
-(Anthropic model), `GEMINI_MODEL` (default `gemini-2.5-flash`), `AI_TIMEOUT_SECONDS` (default 30).
+(Anthropic model), `GEMINI_MODEL` (default `gemini-3.8-flash`; `AI_MODEL=gemini-...` also works), `AI_TIMEOUT_SECONDS` (default 30).
 
 ## Guardrails (`ai/guardrails.py`)
 - `has_clinical_language()` blocks interpretation (anemic, abnormal, normal, low Hb…), trend judgement

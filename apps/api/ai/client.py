@@ -58,17 +58,30 @@ def _anthropic(system: str, user: str) -> str:
     return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
 
+GEMINI_DEFAULT_MODEL = "gemini-3.8-flash"   # 2.5 models are limited to legacy users; new keys need 3.x
+
+
+def _gemini_model() -> str:
+    """GEMINI_MODEL wins; else AI_MODEL if it names a Gemini model; else the current stable Flash."""
+    explicit = (os.getenv("GEMINI_MODEL") or "").strip()
+    if explicit:
+        return explicit
+    ai_model = (os.getenv("AI_MODEL") or "").split("#")[0].strip()
+    return ai_model if ai_model.lower().startswith("gemini") else GEMINI_DEFAULT_MODEL
+
+
 def _gemini(system: str, user: str) -> str:
     """Gemini over plain REST (httpx is already in requirements — no new dependency)."""
     import httpx
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model = _gemini_model()
     r = httpx.post(
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         headers={"x-goog-api-key": os.getenv("GEMINI_API_KEY", "")},   # never in the URL: URLs end up in error logs
         json={
             "system_instruction": {"parts": [{"text": system + _JSON_RULE}]},
             "contents": [{"role": "user", "parts": [{"text": user}]}],
-            "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
+            # Gemini 3.x is tuned for its default temperature (Google advises against lowering it), so not set here.
+            "generationConfig": {"responseMimeType": "application/json"},
         },
         timeout=_TIMEOUT,
     )
