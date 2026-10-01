@@ -94,6 +94,8 @@ def set_journey_state(pid: str, body: JourneyStateIn, db=Depends(get_db), actor=
     if not p:
         raise HTTPException(404, "Patient not found")
     before = p.journey_state
+    if body.state != before:
+        p.journey_state_changed_at = datetime.utcnow()
     p.journey_state = body.state
     audit.log(db, actor, "journey_state_change", "patient", pid, {"state": before}, {"state": body.state, "reason": body.reason})
     attention.apply_journey_state(db, p, actor)

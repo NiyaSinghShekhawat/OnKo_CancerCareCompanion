@@ -54,6 +54,9 @@ def _load(db):
     lakshmi = m.Patient(id="p_lakshmi", name="Lakshmi Devi", age=58, gender="F", phone_whatsapp="whatsapp:+910000000003",
                         preferred_language="Telugu", diagnosis_label="Ovarian Carcinoma (as recorded)",
                         journey_state="REMISSION_SURVIVORSHIP", doctor_id="doc_mehta")
+    for p in (rajesh, priya, arjun, lakshmi):
+        # Current state set well before any seeded event, so advance-day still marks seeded events normally.
+        p.journey_state_changed_at = d(-30)
     db.add_all([rajesh, priya, arjun, lakshmi])
     db.flush()
 

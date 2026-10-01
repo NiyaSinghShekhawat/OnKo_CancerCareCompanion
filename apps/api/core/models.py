@@ -31,6 +31,7 @@ class Patient(Base):
     cycle_current: Mapped[int] = mapped_column(Integer, default=0)
     cycle_total: Mapped[int] = mapped_column(Integer, default=0)
     journey_state: Mapped[str] = mapped_column(String, default="ACTIVE_TREATMENT")
+    journey_state_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     doctor_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

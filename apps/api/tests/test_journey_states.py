@@ -181,6 +181,7 @@ def test_switching_back_resumes_everything(db, paused, resumed):
     set_state("p_arjun", resumed)
     out = checklist("p_arjun")
     assert out["paused"] is False and out["reason"] is None
+    set_changed_at(db, "p_arjun", hours_ago=36)          # resumed 36h ago, so a 30h-old event is after it
     stale = add_stale_event(db, "p_arjun")
     c.post("/demo/advance-day")
     assert status_of(stale) == "NO_RESPONSE"
@@ -193,3 +194,79 @@ def test_switching_back_resumes_everything(db, paused, resumed):
 def test_active_checklist_is_not_paused():
     out = checklist("p_rajesh")
     assert out["paused"] is False and out["reason"] is None and len(out["items"]) == 3
+
+
+# ---------- journey_state_changed_at ----------
+
+def set_changed_at(db, pid, hours_ago):
+    db.get(Patient, pid).journey_state_changed_at = datetime.utcnow() - timedelta(hours=hours_ago)
+    db.commit()
+
+
+def add_event_at(db, pid, hours_ago) -> str:
+    e = CareEvent(patient_id=pid, type="MEDICATION", title=f"Check-in {hours_ago}h ago",
+                  scheduled_at=datetime.utcnow() - timedelta(hours=hours_ago), status="UPCOMING")
+    db.add(e)
+    db.commit()
+    return e.id
+
+
+def changed_at(pid):
+    v = c.get(f"/patients/{pid}").json()["journey_state_changed_at"]
+    return datetime.fromisoformat(v) if v else None
+
+
+def test_seed_sets_changed_at_before_every_seeded_event(db):
+    for p in db.query(Patient).all():
+        assert p.journey_state_changed_at is not None
+        first = db.query(CareEvent).filter_by(patient_id=p.id).order_by(CareEvent.scheduled_at).first()
+        assert first is None or p.journey_state_changed_at < first.scheduled_at
+    assert "journey_state_changed_at" in c.get("/patients/p_rajesh").json()
+
+
+def test_changing_state_sets_changed_at_and_same_state_does_not():
+    seeded = changed_at("p_rajesh")
+    set_state("p_rajesh", "ACTIVE_TREATMENT")                  # already ACTIVE_TREATMENT: not a change
+    assert changed_at("p_rajesh") == seeded
+    t0 = datetime.utcnow()
+    set_state("p_rajesh", "RELAPSE")
+    assert t0 <= changed_at("p_rajesh") <= datetime.utcnow()
+
+
+def test_paused_period_never_becomes_no_response_or_follow_up(db):
+    set_state("p_priya", "TRANSFER_OF_CARE")
+    set_changed_at(db, "p_priya", hours_ago=5 * 24)           # paused 5 days ago
+    during = [add_event_at(db, "p_priya", h) for h in (96, 72, 48)]
+    assert c.post("/demo/advance-day").json() == {"marked_no_response": 0}
+
+    set_state("p_priya", "ACTIVE_TREATMENT")                   # resumed now
+    c.post("/demo/advance-day")
+    assert [status_of(e) for e in during] == ["UPCOMING"] * 3
+    assert open_items("p_priya", "FOLLOW_UP") == []
+
+    set_changed_at(db, "p_priya", hours_ago=36)               # same story, resumed 36h ago
+    after = add_event_at(db, "p_priya", 30)
+    assert c.post("/demo/advance-day").json() == {"marked_no_response": 1}
+    assert status_of(after) == "NO_RESPONSE"
+    assert [status_of(e) for e in during] == ["UPCOMING"] * 3
+    assert open_items("p_priya", "FOLLOW_UP") == []            # 1 unanswered, not 3
+
+
+def test_null_changed_at_behaves_as_before(db):
+    """Rows that existed before the column was added have NULL until reseeded."""
+    db.get(Patient, "p_priya").journey_state_changed_at = None
+    db.commit()
+    e = add_event_at(db, "p_priya", 30)
+    c.post("/demo/advance-day")
+    assert status_of(e) == "NO_RESPONSE"
+
+
+def test_init_db_adds_missing_column_to_existing_table():
+    from sqlalchemy import inspect, text
+    from core.db import engine, init_db
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE patients DROP COLUMN journey_state_changed_at"))
+    assert "journey_state_changed_at" not in {col["name"] for col in inspect(engine).get_columns("patients")}
+    init_db()
+    assert "journey_state_changed_at" in {col["name"] for col in inspect(engine).get_columns("patients")}
+    assert c.get("/patients/p_rajesh").json()["journey_state_changed_at"] is None   # existing rows: NULL
