@@ -217,7 +217,8 @@ def changed_at(pid):
 
 
 def test_seed_sets_changed_at_before_every_seeded_event(db):
-    for p in db.query(Patient).all():
+    """The original four demo patients; the per-state patients are covered in test_seed_states.py."""
+    for p in db.query(Patient).filter(Patient.id.in_(["p_rajesh", "p_priya", "p_arjun", "p_lakshmi"])):
         assert p.journey_state_changed_at is not None
         first = db.query(CareEvent).filter_by(patient_id=p.id).order_by(CareEvent.scheduled_at).first()
         assert first is None or p.journey_state_changed_at < first.scheduled_at

@@ -54,9 +54,10 @@ def day(days_from_today: int) -> str:
     return (datetime.utcnow() + timedelta(days=days_from_today)).date().isoformat()
 
 
-def test_seed_is_chapter_1_everywhere(db):
-    assert {p.journey_chapter for p in db.query(Patient)} == {1}
-    assert {e.journey_chapter for e in db.query(CareEvent)} == {1}
+def test_seed_is_chapter_1_except_the_relapse_patient(db):
+    """p_farhan is seeded in RELAPSE, chapter 2 (see test_seed_states.py)."""
+    assert {p.journey_chapter for p in db.query(Patient).filter(Patient.id != "p_farhan")} == {1}
+    assert {e.journey_chapter for e in db.query(CareEvent).filter(CareEvent.patient_id != "p_farhan")} == {1}
     assert all(e["journey_chapter"] == 1 for e in timeline("p_rajesh"))
 
 
