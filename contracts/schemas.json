@@ -79,6 +79,14 @@
     "permissions": { "view_journey": "boolean", "upload_reports": "boolean", "receive_escalations": "boolean" }
   },
 
+  "CaregiverView": {
+    "_note": "Data minimization: no diagnosis, details, reports, queries or attention items.",
+    "patient": { "id": "string", "name": "string", "journey_state": "JourneyState", "preferred_language": "string" },
+    "upcoming": "{ id, type: EventType, title, scheduled_at: ISO datetime, status: EventStatus }[] (next 7 days + today's open items; [] if DECEASED)",
+    "recent": "{ id, type: EventType, title, scheduled_at: ISO datetime, status: EventStatus }[] (last 7 days, COMPLETED / REPORTED_MISSED / NO_RESPONSE, newest first)",
+    "can_upload_reports": "boolean", "receives_escalations": "boolean"
+  },
+
   "Patient360": {
     "patient": "Patient", "care_plan": "CarePlanItem[]", "timeline": "CareEvent[]",
     "open_queries": "PatientQuery[]", "reports": "Report[]", "caregivers": "Caregiver[]",
