@@ -96,7 +96,6 @@ def set_journey_state(pid: str, body: JourneyStateIn, db=Depends(get_db), actor=
     before = p.journey_state
     p.journey_state = body.state
     audit.log(db, actor, "journey_state_change", "patient", pid, {"state": before}, {"state": body.state, "reason": body.reason})
-    if not attention.adherence_alerts_allowed(p):
-        attention.suppress_adherence(db, p, actor)
+    attention.apply_journey_state(db, p, actor)
     db.commit()
     return to_dict(p)

@@ -4,23 +4,25 @@ Every item carries plain factual reasons. See docs/core.md for the rule table.
 """
 from datetime import datetime
 from core.models import AttentionItem, CareEvent, Patient, PatientQuery, Report
-from core.services import audit
+from core.services import audit, journey_state
 
 NO_RESPONSE_STREAK = 3
 QUERY_OPEN_HOURS = 24
 STREAK_TEXT = "consecutive daily check-ins unanswered"
 MISSED_PREFIXES = ("Medication reported missed: ", "Treatment reported missed: ")
-ADHERENCE_SUPPRESSED_STATES = {"PALLIATIVE"}
+LABELS = ("NEEDS_REVIEW", "FOLLOW_UP", "QUERY", "SOS")
 
 
 def adherence_alerts_allowed(patient: Patient) -> bool:
-    """Missed-dose and unanswered-check-in items are adherence-style; PALLIATIVE suppresses them.
-    Queries, reports and SOS are never suppressed."""
-    return patient.journey_state not in ADHERENCE_SUPPRESSED_STATES
+    """Missed-dose items are adherence-style: off for PALLIATIVE (and DECEASED). See services/journey_state.py."""
+    return journey_state.adherence_alerts_allowed(patient.journey_state)
 
 
-def raise_item(db, patient: Patient, label: str, reason: str) -> AttentionItem:
-    """Add reason to an existing open item of same label, or create a new one."""
+def raise_item(db, patient: Patient, label: str, reason: str) -> AttentionItem | None:
+    """Add reason to an existing open item of same label, or create a new one.
+    Returns None and raises nothing when the journey state allows no attention items (DECEASED)."""
+    if not journey_state.attention_allowed(patient.journey_state):
+        return None
     existing = (db.query(AttentionItem)
                 .filter_by(patient_id=patient.id, label=label)
                 .filter(AttentionItem.status.in_(["PENDING", "ACKNOWLEDGED"]))
@@ -91,6 +93,16 @@ def clear_reason(db, patient: Patient, label: str, reason, actor) -> list[Attent
     return changed
 
 
+def apply_journey_state(db, patient: Patient, actor) -> list[AttentionItem]:
+    """Called after a journey-state change. DECEASED closes every open item; PALLIATIVE drops adherence items.
+    Other states leave existing items as they are."""
+    if not journey_state.attention_allowed(patient.journey_state):
+        return [i for label in LABELS for i in clear_reason(db, patient, label, lambda r: True, actor)]
+    if not journey_state.adherence_alerts_allowed(patient.journey_state):
+        return suppress_adherence(db, patient, actor)
+    return []
+
+
 def suppress_adherence(db, patient: Patient, actor) -> list[AttentionItem]:
     """On switching to PALLIATIVE: close open FOLLOW_UP items and drop missed-dose reasons from NEEDS_REVIEW.
     Report reasons on NEEDS_REVIEW stay. Audited by clear_reason."""
@@ -130,8 +142,10 @@ def recompute_for_patient(db, patient: Patient, now: datetime | None = None):
     """Scan events/queries/reports and call raise_item per rule in docs/core.md."""
     now = now or datetime.utcnow()
     db.flush()
+    if not journey_state.attention_allowed(patient.journey_state):
+        return
 
-    streak = _unanswered_streak(db, patient) if adherence_alerts_allowed(patient) else []
+    streak = _unanswered_streak(db, patient) if journey_state.check_in_follow_up_allowed(patient.journey_state) else []
     if len(streak) >= NO_RESPONSE_STREAK:
         dates = list(dict.fromkeys(f"{e.scheduled_at:%d %b}" for e in streak))
         _raise_replacing(db, patient, "FOLLOW_UP",
