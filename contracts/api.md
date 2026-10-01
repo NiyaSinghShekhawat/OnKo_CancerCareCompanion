@@ -32,6 +32,7 @@ Shapes of every entity live in `schemas.json`. AI output shapes live in `ai_outp
 | PATCH | `/events/{event_id}/status` | body `{ status, source }` → `CareEvent` |
 | GET | `/patients/{id}/checklist/today` | `DailyChecklist` |
 | POST | `/demo/advance-day` | runs 24h window close → marks NO_RESPONSE, regenerates attention |
+| POST | `/demo/reset` | wipes all data and reloads the demo seed → `{ reset: true }` |
 
 ## Attention queue — owner: Samprada (`core/routers/attention.py` + `core/services/attention.py`)
 | Method | Path | Returns |
