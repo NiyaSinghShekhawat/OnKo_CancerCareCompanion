@@ -9,6 +9,14 @@ from core.services import audit
 NO_RESPONSE_STREAK = 3
 QUERY_OPEN_HOURS = 24
 STREAK_TEXT = "consecutive daily check-ins unanswered"
+MISSED_PREFIXES = ("Medication reported missed: ", "Treatment reported missed: ")
+ADHERENCE_SUPPRESSED_STATES = {"PALLIATIVE"}
+
+
+def adherence_alerts_allowed(patient: Patient) -> bool:
+    """Missed-dose and unanswered-check-in items are adherence-style; PALLIATIVE suppresses them.
+    Queries, reports and SOS are never suppressed."""
+    return patient.journey_state not in ADHERENCE_SUPPRESSED_STATES
 
 
 def raise_item(db, patient: Patient, label: str, reason: str) -> AttentionItem:
@@ -32,6 +40,21 @@ def concern_reason(summary: str) -> str:
 
 def report_reason(title: str) -> str:
     return f"New report awaiting review: {title}"
+
+
+def missed_reason(event: CareEvent) -> str:
+    return f"{event.type.title()} reported missed: {event.title}, {event.scheduled_at:%d %b}"
+
+
+def is_missed_reason(reason: str) -> bool:
+    return reason.startswith(MISSED_PREFIXES)
+
+
+def raise_missed(db, patient: Patient, event: CareEvent) -> AttentionItem | None:
+    """NEEDS_REVIEW for a reported-missed medication/treatment, unless adherence alerts are suppressed."""
+    if event.type not in {"MEDICATION", "TREATMENT"} or not adherence_alerts_allowed(patient):
+        return None
+    return raise_item(db, patient, "NEEDS_REVIEW", missed_reason(event))
 
 
 def _is_unresolved_reason(reason: str, summary: str) -> bool:
@@ -68,6 +91,13 @@ def clear_reason(db, patient: Patient, label: str, reason, actor) -> list[Attent
     return changed
 
 
+def suppress_adherence(db, patient: Patient, actor) -> list[AttentionItem]:
+    """On switching to PALLIATIVE: close open FOLLOW_UP items and drop missed-dose reasons from NEEDS_REVIEW.
+    Report reasons on NEEDS_REVIEW stay. Audited by clear_reason."""
+    return (clear_reason(db, patient, "FOLLOW_UP", lambda r: True, actor)
+            + clear_reason(db, patient, "NEEDS_REVIEW", is_missed_reason, actor))
+
+
 def _raise_replacing(db, patient: Patient, label: str, reason: str, is_older_version) -> AttentionItem:
     """raise_item for reasons whose count/hours change between runs: the older wording is dropped first."""
     existing = (db.query(AttentionItem)
@@ -101,7 +131,7 @@ def recompute_for_patient(db, patient: Patient, now: datetime | None = None):
     now = now or datetime.utcnow()
     db.flush()
 
-    streak = _unanswered_streak(db, patient)
+    streak = _unanswered_streak(db, patient) if adherence_alerts_allowed(patient) else []
     if len(streak) >= NO_RESPONSE_STREAK:
         dates = list(dict.fromkeys(f"{e.scheduled_at:%d %b}" for e in streak))
         _raise_replacing(db, patient, "FOLLOW_UP",

@@ -25,10 +25,8 @@ def set_status(event_id: str, body: StatusIn, db=Depends(get_db), actor=Depends(
     e.status = body.status
     e.response_state = body.status if body.status in {"COMPLETED", "REPORTED_MISSED", "CONFLICTING"} else e.response_state
     e.responded_at = datetime.utcnow()
-    if body.status == "REPORTED_MISSED" and e.type in {"MEDICATION", "TREATMENT"}:
-        p = db.get(Patient, e.patient_id)
-        attention.raise_item(db, p, "NEEDS_REVIEW",
-                             f"{e.type.title()} reported missed: {e.title}, {e.scheduled_at:%d %b}")
+    if body.status == "REPORTED_MISSED":
+        attention.raise_missed(db, db.get(Patient, e.patient_id), e)   # no-op for PALLIATIVE
     audit.log(db, actor, "event_status", "care_event", e.id, {"status": before}, {"status": body.status})
     db.commit()
     return to_dict(e)
