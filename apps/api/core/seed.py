@@ -98,7 +98,7 @@ def _load(db):
                         reasons=["Medication reported missed: Capecitabine evening dose",
                                  "New report awaiting review: CBC — 20 Sep"]),
         m.AttentionItem(patient_id="p_rajesh", patient_name="Rajesh Kumar", label="QUERY",
-                        reasons=["New patient concern logged: nausea since yesterday"]),
+                        reasons=["New patient concern logged: Patient reports nausea since yesterday and mild discomfort."]),
         m.AttentionItem(patient_id="p_arjun", patient_name="Arjun Reddy", label="FOLLOW_UP",
                         reasons=["3 consecutive daily check-ins unanswered"]),
     ])

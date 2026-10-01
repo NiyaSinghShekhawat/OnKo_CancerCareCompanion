@@ -30,7 +30,7 @@ def upload(pid: str, body: ReportIn, db=Depends(get_db), actor=Depends(get_actor
                extracted_values=ext.get("values", []), uploaded_by_role=body.uploaded_by_role)
     db.add(r)
     db.flush()
-    attention.raise_item(db, p, "NEEDS_REVIEW", f"New report awaiting review: {body.title}")
+    attention.raise_item(db, p, "NEEDS_REVIEW", attention.report_reason(body.title))
     audit.log(db, actor, "report_uploaded", "report", r.id, None, {"title": body.title})
     db.commit()
     return to_dict(r)

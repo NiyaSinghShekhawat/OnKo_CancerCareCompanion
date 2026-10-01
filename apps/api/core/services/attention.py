@@ -4,6 +4,7 @@ Every item carries plain factual reasons. See docs/core.md for the rule table.
 """
 from datetime import datetime
 from core.models import AttentionItem, CareEvent, Patient, PatientQuery, Report
+from core.services import audit
 
 NO_RESPONSE_STREAK = 3
 QUERY_OPEN_HOURS = 24
@@ -23,6 +24,48 @@ def raise_item(db, patient: Patient, label: str, reason: str) -> AttentionItem:
     item = AttentionItem(patient_id=patient.id, patient_name=patient.name, label=label, reasons=[reason])
     db.add(item)
     return item
+
+
+def concern_reason(summary: str) -> str:
+    return f"New patient concern logged: {summary}"
+
+
+def report_reason(title: str) -> str:
+    return f"New report awaiting review: {title}"
+
+
+def _is_unresolved_reason(reason: str, summary: str) -> bool:
+    """'Query unresolved for {hours}h: {summary}' — hours change between runs."""
+    return reason.startswith("Query unresolved for ") and reason.endswith(f": {summary}")
+
+
+def query_reasons(summary: str):
+    """Matcher for every reason a query can put on the QUERY item (new concern + unresolved >24h)."""
+    return lambda r: r == concern_reason(summary) or _is_unresolved_reason(r, summary)
+
+
+def clear_reason(db, patient: Patient, label: str, reason, actor) -> list[AttentionItem]:
+    """Remove reason (exact text, or a matcher function) from the patient's open items of this label.
+    An item left with no reasons is CLOSED. Every change is audited. Returns the items changed.
+    Report reviewed → clear_reason(db, p, "NEEDS_REVIEW", report_reason(r.title), actor)."""
+    matches = reason if callable(reason) else (lambda r: r == reason)
+    items = (db.query(AttentionItem)
+             .filter_by(patient_id=patient.id, label=label)
+             .filter(AttentionItem.status.in_(["PENDING", "ACKNOWLEDGED"]))
+             .all())
+    changed = []
+    for item in items:
+        kept = [r for r in item.reasons if not matches(r)]
+        if len(kept) == len(item.reasons):
+            continue
+        before = {"reasons": item.reasons, "status": item.status}
+        item.reasons = kept
+        if not kept:
+            item.status = "CLOSED"
+        audit.log(db, actor, "attention_closed" if not kept else "attention_reason_cleared",
+                  "attention_item", item.id, before, {"reasons": item.reasons, "status": item.status})
+        changed.append(item)
+    return changed
 
 
 def _raise_replacing(db, patient: Patient, label: str, reason: str, is_older_version) -> AttentionItem:
@@ -73,11 +116,11 @@ def recompute_for_patient(db, patient: Patient, now: datetime | None = None):
         if hours > QUERY_OPEN_HOURS:
             _raise_replacing(db, patient, "QUERY",
                              f"Query unresolved for {hours}h: {q.summary}",
-                             lambda r, s=q.summary: r.startswith("Query unresolved for ") and r.endswith(f": {s}"))
+                             lambda r, s=q.summary: _is_unresolved_reason(r, s))
 
     reports = (db.query(Report)
                .filter(Report.patient_id == patient.id, Report.reviewed == False)  # noqa: E712
                .order_by(Report.uploaded_at).all())
     for r in reports:
-        raise_item(db, patient, "NEEDS_REVIEW", f"New report awaiting review: {r.title}")
+        raise_item(db, patient, "NEEDS_REVIEW", report_reason(r.title))
         db.flush()

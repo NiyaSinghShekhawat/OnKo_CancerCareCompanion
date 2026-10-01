@@ -27,7 +27,7 @@ def create_query(db, actor, patient_id: str, text: str, channel: str) -> Patient
     db.add(q)
     db.flush()
     if c["category"] in {"SYMPTOM_CONCERN", "MEDICATION"}:
-        attention.raise_item(db, p, "QUERY", f"New patient concern logged: {c['summary']}")
+        attention.raise_item(db, p, "QUERY", attention.concern_reason(c["summary"]))
     audit.log(db, actor, "query_created", "patient_query", q.id, None, c)
     db.commit()
     return q
@@ -56,7 +56,10 @@ def update_query(qid: str, body: QueryUpdate, db=Depends(get_db), actor=Depends(
     q = db.get(PatientQuery, qid)
     if not q:
         raise HTTPException(404, "Not found")
+    was_resolved = q.status == "RESOLVED"
     q.status, q.response = body.status, body.response or q.response
+    if q.status == "RESOLVED" and not was_resolved:
+        attention.clear_reason(db, db.get(Patient, q.patient_id), "QUERY", attention.query_reasons(q.summary), actor)
     audit.log(db, actor, "query_update", "patient_query", q.id, None, body.model_dump())
     db.commit()
     return to_dict(q)
