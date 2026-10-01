@@ -42,7 +42,7 @@ def _load(db):
 
     rajesh = m.Patient(id="p_rajesh", name="Rajesh Kumar", age=54, gender="M", abha_id="91-1234-5678-9012",
                        phone_whatsapp=os.getenv("DEMO_PATIENT_WHATSAPP", "whatsapp:+910000000000"),
-                       preferred_language="Hindi", diagnosis_label="Stage III Colorectal Adenocarcinoma",
+                       preferred_language="Hindi", diagnosis_label="Stage III Colorectal Adenocarcinoma (as recorded)",
                        regimen_label="CAPOX", cycle_current=4, cycle_total=8, doctor_id="doc_mehta",
                        last_reviewed_at=d(-6))
     priya = m.Patient(id="p_priya", name="Priya Sundaram", age=41, gender="F", phone_whatsapp="whatsapp:+910000000001",
