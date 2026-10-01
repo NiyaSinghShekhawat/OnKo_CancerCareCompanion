@@ -2,10 +2,11 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor
+from core.auth import get_actor, require
 from core.models import CareEvent, Patient
 from core.serialize import to_dict
 from core.services import audit, checklist, attention
+from core import seed
 
 router = APIRouter(tags=["events"])
 
@@ -48,3 +49,11 @@ def advance_day(db=Depends(get_db)):
         attention.recompute_for_patient(db, p, now)
     db.commit()
     return {"marked_no_response": len(stale)}
+
+
+@router.post("/demo/reset")
+def reset_demo(db=Depends(get_db), actor=Depends(get_actor)):
+    require(actor, "doctor")
+    seed.run(db)
+    db.commit()
+    return {"reset": True}

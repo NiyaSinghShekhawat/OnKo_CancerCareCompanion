@@ -1,4 +1,5 @@
-"""Demo data. Run: python -m core.seed   (wipes and reloads the DB)"""
+"""Demo data. Run: python -m core.seed   (wipes and reloads the DB)
+The running app resets through POST /demo/reset, which calls run(db) with its own session."""
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -7,14 +8,32 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 from core.db import Base, engine, SessionLocal
 from core import models as m
 
-now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
-d = lambda days, h=9: (now + timedelta(days=days)).replace(hour=h)
+
+def run(db=None):
+    """No session: drop + recreate tables and commit (CLI, tests).
+    With a session: delete every row and reseed inside it, keeping the tables; the caller commits."""
+    if db is None:
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            _load(db)
+            db.commit()
+        finally:
+            db.close()
+        print("Seeded: 4 patients, events, 1 report, 1 query, 2 caregivers, 3 attention items")
+        return
+    for table in reversed(Base.metadata.sorted_tables):
+        db.execute(table.delete())
+    db.expunge_all()
+    _load(db)
+    db.flush()
 
 
-def run():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+def _load(db):
+    # Dates are relative to the moment of seeding, so a reset hours later still looks like "today".
+    now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    d = lambda days, h=9: (now + timedelta(days=days)).replace(hour=h)
 
     db.add_all([
         m.User(id="doc_mehta", name="Dr. Mehta", role="doctor"),
@@ -83,9 +102,6 @@ def run():
         m.AttentionItem(patient_id="p_arjun", patient_name="Arjun Reddy", label="FOLLOW_UP",
                         reasons=["3 consecutive daily check-ins unanswered"]),
     ])
-    db.commit()
-    db.close()
-    print("Seeded: 4 patients, events, 1 report, 1 query, 2 caregivers, 3 attention items")
 
 
 if __name__ == "__main__":
