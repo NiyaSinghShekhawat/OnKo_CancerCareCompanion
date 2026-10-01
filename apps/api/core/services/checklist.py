@@ -17,15 +17,19 @@ def todays_items(db, patient_id: str, day: datetime | None = None):
 
 def close_window(db, now: datetime):
     """Mark items whose 24h window has passed with no response as NO_RESPONSE.
-    Patients whose checklist is paused (TRANSFER_OF_CARE, DECEASED) are skipped, and only events scheduled
-    after the patient's last journey-state change count — so a paused period never turns into NO_RESPONSE."""
+    Patients whose checklist is paused (TRANSFER_OF_CARE, DECEASED) are skipped. After resuming from a paused
+    state, events scheduled before the resume are ignored, so the paused period never turns into NO_RESPONSE.
+    Any other state change leaves earlier events to be marked as normal."""
     cutoff = now - timedelta(hours=24)
+    paused = journey_state.CHECKLIST_PAUSED
     stale = (db.query(CareEvent)
              .join(Patient, Patient.id == CareEvent.patient_id)
              .filter(CareEvent.scheduled_at < cutoff,
                      CareEvent.status.in_(["UPCOMING", "CURRENT"]),
-                     Patient.journey_state.notin_(journey_state.CHECKLIST_PAUSED),
+                     Patient.journey_state.notin_(paused),
                      or_(Patient.journey_state_changed_at.is_(None),
+                         Patient.previous_journey_state.is_(None),
+                         Patient.previous_journey_state.notin_(paused),
                          CareEvent.scheduled_at > Patient.journey_state_changed_at)).all())
     for e in stale:
         e.status = "NO_RESPONSE"

@@ -21,7 +21,7 @@
     "abha_id": "string|null", "phone_whatsapp": "string", "preferred_language": "string",
     "diagnosis_label": "string (doctor-entered, displayed as-is)",
     "regimen_label": "string", "cycle_current": "number", "cycle_total": "number",
-    "journey_state": "JourneyState", "journey_state_changed_at": "ISO datetime|null", "doctor_id": "string",
+    "journey_state": "JourneyState", "journey_state_changed_at": "ISO datetime|null", "previous_journey_state": "JourneyState|null", "doctor_id": "string",
     "last_reviewed_at": "ISO datetime|null", "created_at": "ISO datetime"
   },
 

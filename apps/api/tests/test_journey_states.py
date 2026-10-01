@@ -224,13 +224,19 @@ def test_seed_sets_changed_at_before_every_seeded_event(db):
     assert "journey_state_changed_at" in c.get("/patients/p_rajesh").json()
 
 
-def test_changing_state_sets_changed_at_and_same_state_does_not():
+def test_changing_state_sets_changed_at_and_previous_state_and_same_state_does_not():
     seeded = changed_at("p_rajesh")
+    assert c.get("/patients/p_rajesh").json()["previous_journey_state"] is None
     set_state("p_rajesh", "ACTIVE_TREATMENT")                  # already ACTIVE_TREATMENT: not a change
     assert changed_at("p_rajesh") == seeded
+    assert c.get("/patients/p_rajesh").json()["previous_journey_state"] is None
     t0 = datetime.utcnow()
     set_state("p_rajesh", "RELAPSE")
     assert t0 <= changed_at("p_rajesh") <= datetime.utcnow()
+    assert c.get("/patients/p_rajesh").json()["previous_journey_state"] == "ACTIVE_TREATMENT"
+    set_state("p_rajesh", "TRANSFER_OF_CARE")
+    set_state("p_rajesh", "RELAPSE")
+    assert c.get("/patients/p_rajesh").json()["previous_journey_state"] == "TRANSFER_OF_CARE"
 
 
 def test_paused_period_never_becomes_no_response_or_follow_up(db):
@@ -252,6 +258,30 @@ def test_paused_period_never_becomes_no_response_or_follow_up(db):
     assert open_items("p_priya", "FOLLOW_UP") == []            # 1 unanswered, not 3
 
 
+def test_resuming_from_deceased_also_ignores_the_paused_period(db):
+    set_state("p_priya", "DECEASED")
+    set_changed_at(db, "p_priya", hours_ago=5 * 24)
+    during = add_event_at(db, "p_priya", 72)
+    set_state("p_priya", "RELAPSE")
+    set_changed_at(db, "p_priya", hours_ago=36)
+    after = add_event_at(db, "p_priya", 30)
+    c.post("/demo/advance-day")
+    assert (status_of(during), status_of(after)) == ("UPCOMING", "NO_RESPONSE")
+
+
+@pytest.mark.parametrize("before, after", [("ACTIVE_TREATMENT", "RELAPSE"),
+                                           ("ACTIVE_TREATMENT", "PALLIATIVE"),
+                                           ("PALLIATIVE", "ACTIVE_TREATMENT"),
+                                           ("REMISSION_SURVIVORSHIP", "RELAPSE")])
+def test_other_transitions_mark_earlier_events_as_normal(db, before, after):
+    set_state("p_priya", before)
+    earlier = add_event_at(db, "p_priya", 72)                  # scheduled before the change below
+    set_state("p_priya", after)
+    assert c.get("/patients/p_priya").json()["previous_journey_state"] == before
+    assert c.post("/demo/advance-day").json() == {"marked_no_response": 1}
+    assert status_of(earlier) == "NO_RESPONSE"
+
+
 def test_null_changed_at_behaves_as_before(db):
     """Rows that existed before the column was added have NULL until reseeded."""
     db.get(Patient, "p_priya").journey_state_changed_at = None
@@ -261,12 +291,15 @@ def test_null_changed_at_behaves_as_before(db):
     assert status_of(e) == "NO_RESPONSE"
 
 
-def test_init_db_adds_missing_column_to_existing_table():
+def test_init_db_adds_missing_columns_to_existing_table():
     from sqlalchemy import inspect, text
     from core.db import engine, init_db
+    new = ("journey_state_changed_at", "previous_journey_state")
     with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE patients DROP COLUMN journey_state_changed_at"))
-    assert "journey_state_changed_at" not in {col["name"] for col in inspect(engine).get_columns("patients")}
+        for col in new:
+            conn.execute(text(f"ALTER TABLE patients DROP COLUMN {col}"))
+    assert not set(new) & {col["name"] for col in inspect(engine).get_columns("patients")}
     init_db()
-    assert "journey_state_changed_at" in {col["name"] for col in inspect(engine).get_columns("patients")}
-    assert c.get("/patients/p_rajesh").json()["journey_state_changed_at"] is None   # existing rows: NULL
+    assert set(new) <= {col["name"] for col in inspect(engine).get_columns("patients")}
+    p = c.get("/patients/p_rajesh").json()
+    assert p["journey_state_changed_at"] is None and p["previous_journey_state"] is None   # existing rows: NULL

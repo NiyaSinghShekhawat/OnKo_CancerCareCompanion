@@ -96,6 +96,7 @@ def set_journey_state(pid: str, body: JourneyStateIn, db=Depends(get_db), actor=
     before = p.journey_state
     if body.state != before:
         p.journey_state_changed_at = datetime.utcnow()
+        p.previous_journey_state = before
     p.journey_state = body.state
     audit.log(db, actor, "journey_state_change", "patient", pid, {"state": before}, {"state": body.state, "reason": body.reason})
     attention.apply_journey_state(db, p, actor)
