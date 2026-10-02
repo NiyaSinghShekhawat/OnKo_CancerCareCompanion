@@ -79,3 +79,24 @@ def test_closed_attention_leaves_queue_but_remains_in_patient_history():
     history = c.get(f"/patients/{item['patient_id']}/360", headers=DOCTOR).json()["attention_history"]
     closed = next(a for a in history if a["id"] == item["id"])
     assert closed["status"] == "CLOSED"
+
+
+def test_handled_sos_is_not_counted_as_open_dashboard_sos():
+    items = c.get("/attention", headers=DOCTOR).json()
+    sos = next((a for a in items if a["label"] == "SOS"), None)
+    if sos is None:
+        # Seed may have no SOS; create one through the public endpoint.
+        created = c.post("/sos", headers=DOCTOR, json={"patient_id": "p_rajesh", "channel": "app"})
+        assert created.status_code == 200
+        sos = created.json()
+
+    before = c.get("/dashboard/overview", headers=DOCTOR)
+    assert before.status_code == 200
+    assert before.json()["sos_open"] >= 1
+
+    handled = c.patch(f"/attention/{sos['id']}", headers=DOCTOR, json={"status": "HANDLED"})
+    assert handled.status_code == 200
+
+    after = c.get("/dashboard/overview", headers=DOCTOR)
+    assert after.status_code == 200
+    assert after.json()["sos_open"] == before.json()["sos_open"] - 1
