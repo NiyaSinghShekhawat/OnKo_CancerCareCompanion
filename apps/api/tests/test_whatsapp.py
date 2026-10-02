@@ -210,3 +210,14 @@ def test_sos_dedupe_resets_after_demo_reset(capsys):
     reply = wa("SOS")
     assert "केयरगिवर" in reply
     assert capsys.readouterr().out.count("OnKo alert: Rajesh Kumar") == 2
+
+
+def test_send_checklist_requires_demo_access_code_when_set(monkeypatch):
+    monkeypatch.setenv("DEMO_ACCESS_CODE", "letmein")
+    anon = TestClient(app)
+    staff = {"X-Role": "doctor", "X-User-Id": "doc_mehta"}
+    assert anon.post("/whatsapp/send-checklist/p_rajesh", headers=staff).status_code == 401
+    wrong = {**staff, "X-Access-Code": "nope"}
+    assert anon.post("/whatsapp/send-checklist/p_rajesh", headers=wrong).status_code == 401
+    ok = {**staff, "X-Access-Code": "letmein"}
+    assert anon.post("/whatsapp/send-checklist/p_rajesh", headers=ok).status_code == 200

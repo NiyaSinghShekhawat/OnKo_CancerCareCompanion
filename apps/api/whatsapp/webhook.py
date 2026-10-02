@@ -9,6 +9,8 @@ Journey states (set by clinicians only):
   TRANSFER_OF_CARE              -> automated messaging paused; SOS still works, messages still reach the care team
   DECEASED                      -> hard stop: no automated replies at all (inbound text is still logged for the team)
 """
+import hmac
+import inspect
 import os
 from datetime import timedelta
 
@@ -69,13 +71,20 @@ async def verify_twilio(request: Request, x_twilio_signature: str | None = Heade
 # ---------------- who can trigger outgoing messages ----------------
 
 def staff_or_cron(x_role: str | None = Header(None), x_user_id: str | None = Header(None),
-                  x_cron_secret: str | None = Header(None), db=Depends(get_db)) -> Actor:
-    """Doctor / care team (normal X-Role auth), or the daily scheduler presenting CRON_SECRET.
-    In /docs: fill x-role = doctor and x-user-id = doc_mehta."""
+                  x_access_code: str | None = Header(None), x_cron_secret: str | None = Header(None),
+                  db=Depends(get_db)) -> Actor:
+    """Doctor / care team (normal X-Role auth + X-Access-Code when DEMO_ACCESS_CODE is set),
+    or the daily scheduler presenting CRON_SECRET. In /docs: x-role = doctor, x-user-id = doc_mehta."""
     secret = (os.getenv("CRON_SECRET") or "").strip()
-    if secret and x_cron_secret == secret:
+    if secret and x_cron_secret and hmac.compare_digest(x_cron_secret.encode(), secret.encode()):
         return SYSTEM
-    actor = get_actor(x_role, x_user_id, db)
+    if "x_access_code" in inspect.signature(get_actor).parameters:      # core's access-code check
+        actor = get_actor(x_role=x_role, x_user_id=x_user_id, x_access_code=x_access_code, db=db)
+    else:                                                                 # older core: enforce it here
+        expected = os.getenv("DEMO_ACCESS_CODE") or ""
+        if expected and not hmac.compare_digest((x_access_code or "").encode(), expected.encode()):
+            raise HTTPException(401, "Access code required")
+        actor = get_actor(x_role=x_role, x_user_id=x_user_id, db=db)
     require(actor, *STAFF)
     return actor
 
