@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from core.db import get_db
+from core.auth import STAFF, get_actor, require
 from core.models import AuditLog
 from core.serialize import to_dict
 
@@ -7,7 +8,8 @@ router = APIRouter(tags=["audit"])
 
 
 @router.get("/audit")
-def list_audit(entity_id: str | None = None, db=Depends(get_db)):
+def list_audit(entity_id: str | None = None, db=Depends(get_db), actor=Depends(get_actor)):
+    require(actor, *STAFF)
     q = db.query(AuditLog)
     if entity_id:
         q = q.filter_by(entity_id=entity_id)
