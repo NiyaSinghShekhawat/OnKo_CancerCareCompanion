@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from core import seed
 from main import app
+import hashlib, hmac, base64, os
 from whatsapp import messages, webhook
 from whatsapp.parser import intent, parse_all, parse_checklist_reply
 
@@ -13,8 +14,6 @@ c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # 
 @pytest.fixture(autouse=True)
 def fresh_db():
     seed.run()
-    webhook._last_checklist.clear()
-    messages._recent_sos.clear()
 
 
 def phone():
@@ -129,3 +128,96 @@ def test_transfer_of_care_pauses_but_sos_still_works():
     c.patch("/patients/p_rajesh/journey-state", json={"state": "TRANSFER_OF_CARE", "reason": "test"})
     assert c.post("/whatsapp/send-checklist/p_rajesh").json()["sent"] is False
     assert "SOS" in wa("SOS")
+
+
+# ---- deployment hardening ----
+
+def test_send_checklist_needs_staff_or_cron_secret(monkeypatch):
+    anon = TestClient(app)
+    assert anon.post("/whatsapp/send-checklist/p_rajesh").status_code == 401
+    patient = {"X-Role": "patient", "X-User-Id": "p_rajesh"}
+    assert anon.post("/whatsapp/send-checklist/p_rajesh", headers=patient).status_code == 403
+    monkeypatch.setenv("CRON_SECRET", "s3cret")
+    assert anon.post("/whatsapp/send-checklist/p_rajesh", headers={"X-Cron-Secret": "wrong"}).status_code == 401
+    assert anon.post("/whatsapp/send-checklist/p_rajesh", headers={"X-Cron-Secret": "s3cret"}).status_code == 200
+
+
+def test_checklist_numbering_survives_restart():
+    """Order is stored in the audit log, not memory: replies map to what the patient saw."""
+    c.post("/whatsapp/send-checklist/p_rajesh")
+    wa("3 missed")
+    assert today()["Capecitabine 500mg"]["status"] == "REPORTED_MISSED"
+    assert any(a["action"] == "whatsapp_checklist_sent" for a in c.get("/audit?entity_id=p_rajesh").json())
+
+
+def _sign(token, url, params):
+    data = url + "".join(k + params[k] for k in sorted(params))
+    return base64.b64encode(hmac.new(token.encode(), data.encode(), hashlib.sha1).digest()).decode()
+
+
+def test_webhook_rejects_unsigned_requests_when_twilio_configured(monkeypatch):
+    monkeypatch.setenv("TWILIO_AUTH_TOKEN", "tok123")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://onko.example.com")
+    params = {"From": phone(), "Body": "SOS"}
+    assert c.post("/whatsapp/webhook", data=params).status_code == 403
+    bad = {"X-Twilio-Signature": "nope"}
+    assert c.post("/whatsapp/webhook", data=params, headers=bad).status_code == 403
+    good = {"X-Twilio-Signature": _sign("tok123", "https://onko.example.com/whatsapp/webhook", params)}
+    r = c.post("/whatsapp/webhook", data=params, headers=good)
+    assert r.status_code == 200 and "SOS" in r.text
+
+
+def test_signature_check_can_be_switched_off_for_local_debugging(monkeypatch):
+    monkeypatch.setenv("TWILIO_AUTH_TOKEN", "tok123")
+    monkeypatch.setenv("TWILIO_VALIDATE_SIGNATURE", "false")
+    assert c.post("/whatsapp/webhook", data={"From": phone(), "Body": "hi"}).status_code == 200
+
+
+def test_sos_reply_mentions_caregiver_and_alerts_once(capsys):
+    reply = wa("SOS")
+    assert "केयरगिवर" in reply                         # Hindi "caregiver": they really were alerted
+    wa("SOS")                                          # second press within 60 s
+    assert capsys.readouterr().out.count("OnKo alert: Rajesh Kumar") == 1
+
+
+def test_production_logs_hide_patient_text(monkeypatch, capsys):
+    monkeypatch.setenv("ONKO_ENV", "production")
+    c.post("/whatsapp/send-checklist/p_rajesh")
+    out = capsys.readouterr().out
+    assert "Capecitabine" not in out and "Rajesh" not in out
+    assert messages.mask_phone("whatsapp:+919876543210") == "whatsapp:+91******3210"
+
+
+def test_daily_job_sends_one_checklist_per_eligible_patient():
+    from whatsapp import daily
+    summary = daily.run()
+    assert summary["sent"] + summary["not_sent"] >= 1          # dry run in tests: "not_sent" but delivered + logged
+    sent_logs = [a for a in c.get("/audit?entity_id=p_rajesh").json() if a["action"] == "whatsapp_checklist_sent"]
+    assert len(sent_logs) == 1
+
+
+def test_transfer_of_care_sos_still_alerts_caregiver(capsys):
+    c.patch("/patients/p_rajesh/journey-state", json={"state": "TRANSFER_OF_CARE", "reason": "test"})
+    reply = wa("SOS")
+    assert "केयरगिवर" in reply
+    assert "OnKo alert: Rajesh Kumar" in capsys.readouterr().out
+    assert c.get("/attention").json()[0]["label"] == "SOS"
+
+
+def test_sos_dedupe_resets_after_demo_reset(capsys):
+    wa("SOS")
+    c.post("/demo/reset")
+    reply = wa("SOS")
+    assert "केयरगिवर" in reply
+    assert capsys.readouterr().out.count("OnKo alert: Rajesh Kumar") == 2
+
+
+def test_send_checklist_requires_demo_access_code_when_set(monkeypatch):
+    monkeypatch.setenv("DEMO_ACCESS_CODE", "letmein")
+    anon = TestClient(app)
+    staff = {"X-Role": "doctor", "X-User-Id": "doc_mehta"}
+    assert anon.post("/whatsapp/send-checklist/p_rajesh", headers=staff).status_code == 401
+    wrong = {**staff, "X-Access-Code": "nope"}
+    assert anon.post("/whatsapp/send-checklist/p_rajesh", headers=wrong).status_code == 401
+    ok = {**staff, "X-Access-Code": "letmein"}
+    assert anon.post("/whatsapp/send-checklist/p_rajesh", headers=ok).status_code == 200

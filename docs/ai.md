@@ -40,7 +40,7 @@ Config (`.env`): `AI_PROVIDER=anthropic|gemini`, `ANTHROPIC_API_KEY` / `GEMINI_A
 | `all done` / `sab ho gaya` | Marks the not-yet-answered items done |
 | Same item answered differently | `CONFLICTING` — the care team reviews it |
 | Reply after the 24 h window closed | Recorded, and the reply says "(late reply)" |
-| `SOS` / 🆘 | Core `trigger_sos` → SOS at top of queue; consented caregivers with escalations on are alerted; reply includes "call 108" |
+| `SOS` / 🆘 | Core `trigger_sos` → SOS at top of queue + `notify_caregivers` (consented caregivers with escalations on, once per 60 s); reply includes "call 108" |
 | `STOP` | Logged as an admin query for the care team (consent withdrawal handled by humans) |
 | Anything else | `create_query` → classified, summarised, routed |
 
@@ -62,3 +62,33 @@ Config (`.env`): `AI_PROVIDER=anthropic|gemini`, `ANTHROPIC_API_KEY` / `GEMINI_A
 
 Sandbox limits: only phones that sent `join <code>` receive messages, and business-initiated messages only
 reach a phone that messaged the sandbox in the last 24 h — send "hi" from your phone before the demo.
+
+## Deploying (AI + WhatsApp side)
+
+Security built in:
+- **Twilio signature check** on `/whatsapp/webhook`: on automatically when `TWILIO_AUTH_TOKEN` is set, so nobody can
+  post fake replies or a fake SOS. Behind a proxy set `PUBLIC_BASE_URL` to the exact public base URL Twilio calls
+  (e.g. `https://onko-api.onrender.com`). For local ngrok debugging only: `TWILIO_VALIDATE_SIGNATURE=false`.
+- **`/whatsapp/send-checklist/{id}`** needs a doctor / care-team login (`X-Role` + `X-User-Id`) or the scheduler's
+  `X-Cron-Secret: $CRON_SECRET`. Strangers can't spend Twilio credit or message patients.
+- **No in-memory state**: the checklist numbering and the SOS de-dupe are stored in the audit log
+  (`whatsapp_checklist_sent`, `caregivers_notified`), so restarts and several workers are fine.
+- **`ONKO_ENV=production`**: dry-run messages and errors no longer print patient text; phone numbers are masked.
+- **`AI_MAX_INPUT_CHARS`** (default 12000) caps what is sent to the LLM.
+
+Daily checklist (one message per patient per day): schedule this every morning, e.g. a Render Cron Job
+`0 3 * * *` (= 08:30 IST) with the same env vars as the API:
+
+    cd apps/api && python -m whatsapp.daily          # --preview lists recipients without sending
+
+| Env var | Where | Value |
+|---|---|---|
+| `ONKO_ENV` | API + cron | `production` |
+| `PUBLIC_BASE_URL` | API | public https URL of the API |
+| `CRON_SECRET` | API (+ any HTTP scheduler) | long random string |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_WHATSAPP_FROM` | API + cron | from Twilio |
+| `AI_PROVIDER` / `GEMINI_API_KEY` (or `ANTHROPIC_API_KEY`) | API | your key |
+| `DATABASE_URL` | API + cron | the shared Postgres (Supabase) URL — the cron job can't see a SQLite file |
+
+Twilio console → sandbox (or WhatsApp sender) → "When a message comes in": `https://<api-url>/whatsapp/webhook`, POST.
+No ngrok needed once deployed.

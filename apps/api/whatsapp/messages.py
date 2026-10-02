@@ -6,11 +6,15 @@
 - Templates exist in English, Hindi, Telugu, Tamil; item titles stay exactly as the doctor approved them.
 """
 import os
-import time
+import re
+from datetime import timedelta
 
 from ai.client import today_ist
-from core.models import Caregiver, Patient
+from core.models import AuditLog, Caregiver, Patient
+from core.services import audit
+from core.services import journey_state
 from core.services.journey_state import can_message
+from core.timeutil import utcnow
 
 T = {
     "English": {
@@ -175,51 +179,79 @@ def render_recorded(patient, recorded: list[tuple[int, str, str, bool]], unknown
 
 # ---------------- sending ----------------
 
-last_error: str | None = None   # why the most recent send() failed, shown in /whatsapp/send-checklist
+def _production() -> bool:
+    """ONKO_ENV=production on the deployed server: no patient text or full phone numbers in the logs."""
+    return (os.getenv("ONKO_ENV") or "").strip().lower() in {"prod", "production"}
 
 
-def send(to: str, body: str) -> bool:
-    """Send one WhatsApp message via Twilio. Without Twilio keys it prints instead (dry run). Never raises."""
-    global last_error
-    last_error = None
+def mask_phone(number: str | None) -> str:
+    """'whatsapp:+919876543210' -> 'whatsapp:+91******3210' (enough to recognise, not enough to misuse)."""
+    return re.sub(r"(\+\d{2})\d+(\d{4})", r"\1******\2", number or "")
+
+
+def _log(msg: str):
+    print(f"[whatsapp] {msg}")
+
+
+def send_detail(to: str, body: str) -> tuple[bool, str | None]:
+    """Send one WhatsApp message via Twilio -> (sent, error). Without Twilio keys it's a dry run. Never raises."""
     sid, token = (os.getenv("TWILIO_ACCOUNT_SID") or "").strip(), (os.getenv("TWILIO_AUTH_TOKEN") or "").strip()
     sender = (os.getenv("TWILIO_WHATSAPP_FROM") or "whatsapp:+14155238886").strip()
     if not sid or not token:
-        last_error = "Dry run: TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not set in .env (restart the server after editing .env)"
-        print(f"[whatsapp:dry-run] -> {to}\n{body}\n")
-        return False
+        if _production():
+            _log(f"dry-run (Twilio not configured) -> {mask_phone(to)}, {len(body)} chars")
+        else:
+            print(f"[whatsapp:dry-run] -> {to}\n{body}\n")
+        return False, "Dry run: TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not set (restart the server after editing .env)"
     if not to or "X" in to:
-        last_error = f"Patient's WhatsApp number looks unset: '{to}'. Set DEMO_PATIENT_WHATSAPP in .env, then run python -m core.seed"
-        print(f"[whatsapp] {last_error}")
-        return False
+        err = "Patient's WhatsApp number looks unset. Set DEMO_PATIENT_WHATSAPP in .env, then run python -m core.seed"
+        _log(err)
+        return False, err
     to = to if to.startswith("whatsapp:") else f"whatsapp:{to}"
     sender = sender if sender.startswith("whatsapp:") else f"whatsapp:{sender}"
     try:
         from twilio.rest import Client
         Client(sid, token).messages.create(from_=sender, to=to, body=body)
-        return True
+        return True, None
     except Exception as e:  # noqa: BLE001
-        last_error = f"Twilio error sending to {to}: {e}"
-        print(f"[whatsapp] {last_error}")
-        return False
+        err = f"Twilio error sending to {mask_phone(to)}: {str(e).replace(to, mask_phone(to))}"
+        _log(err)
+        return False, err
 
 
-_recent_sos: dict[str, float] = {}
-SOS_DEDUPE_SECONDS = 60
+def send(to: str, body: str) -> bool:
+    return send_detail(to, body)[0]
+
+
+SOS_DEDUPE = timedelta(seconds=60)
+_recent_sos: dict = {}   # no longer used (de-dupe lives in the audit log); kept so older tests that .clear() it still run
+NOTIFIED_ACTION = "caregivers_notified"
+
+
+def _recent_notification(db, patient: Patient) -> AuditLog | None:
+    db.flush()
+    return (db.query(AuditLog)
+            .filter(AuditLog.action == NOTIFIED_ACTION, AuditLog.entity_id == patient.id,
+                    AuditLog.timestamp >= utcnow() - SOS_DEDUPE)
+            .order_by(AuditLog.timestamp.desc()).first())
+
+
+def recently_notified(db, patient: Patient) -> list[str]:
+    """Names of caregivers alerted for this patient's SOS in the last 60 s (for the patient's confirmation reply)."""
+    row = _recent_notification(db, patient)
+    return list((row.after or {}).get("names", [])) if row else []
 
 
 def notify_caregivers(db, patient: Patient, channel: str = "whatsapp") -> list[str]:
     """Alert caregivers who GRANTED consent and have receive_escalations on. Returns names notified.
 
-    Safe to call twice for the same SOS (e.g. from the webhook and from core's sos.py): a second call within
-    60 s for the same patient is ignored.
+    Called by core's trigger_sos for app + WhatsApp SOS. A repeat within 60 s for the same patient is ignored;
+    the check uses the audit log, so it holds across restarts and multiple server workers.
     """
-    if not can_message(patient.journey_state):
+    # A patient-declared SOS reaches caregivers in every state except DECEASED — including TRANSFER_OF_CARE,
+    # where only routine automated messages are paused.
+    if not journey_state.attention_allowed(patient.journey_state) or _recent_notification(db, patient):
         return []
-    now = time.time()
-    if now - _recent_sos.get(patient.id, 0) < SOS_DEDUPE_SECONDS:
-        return []
-    _recent_sos[patient.id] = now
     notified = []
     cgs = db.query(Caregiver).filter_by(patient_id=patient.id, consent_status="GRANTED").all()
     for cg in cgs:
@@ -230,6 +262,10 @@ def notify_caregivers(db, patient: Patient, channel: str = "whatsapp") -> list[s
                 f"If immediate medical help is needed, call 108.")
         send(cg.phone_whatsapp, body)
         notified.append(cg.name)
+    from core.auth import Actor            # local import: core.routers.sos imports this module
+    audit.log(db, Actor("system", "whatsapp"), NOTIFIED_ACTION, "patient", patient.id, None,
+              {"names": notified, "channel": channel})
+    db.flush()
     return notified
 
 
