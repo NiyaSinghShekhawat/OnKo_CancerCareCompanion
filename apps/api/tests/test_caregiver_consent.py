@@ -107,8 +107,9 @@ def test_accept_when_already_granted_is_a_no_op():
     assert consent_audit(sunita) == []
 
 
-def test_accept_unknown_caregiver_404():
-    assert post("nope", "accept", as_cg("nope")).status_code == 404
+def test_accept_as_unknown_caregiver_401():
+    r = post("nope", "accept", as_cg("nope"))
+    assert r.status_code == 401 and r.json()["detail"] == "Unknown user for role"
 
 
 # ---------- revoke ----------

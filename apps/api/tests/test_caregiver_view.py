@@ -111,10 +111,10 @@ def test_caregiver_cannot_open_another_caregivers_view(db):
     assert r.status_code == 403
 
 
-@pytest.mark.parametrize("role", ["patient", "care_team"])
-def test_other_roles_refused(db, role):
-    cid = cg_id(db, "Sunita Kumar")
-    assert view(cid, headers={"X-Role": role, "X-User-Id": cid}).status_code == 403
+@pytest.mark.parametrize("headers", [{"X-Role": "patient", "X-User-Id": "p_rajesh"},     # Sunita's own patient
+                                     {"X-Role": "care_team", "X-User-Id": "nurse_anita"}])
+def test_other_roles_refused(db, headers):
+    assert view(cg_id(db, "Sunita Kumar"), headers=headers).status_code == 403
 
 
 def test_unknown_caregiver_is_404():

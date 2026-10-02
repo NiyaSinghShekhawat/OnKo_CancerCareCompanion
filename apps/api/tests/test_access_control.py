@@ -64,6 +64,29 @@ def test_unknown_role_400():
     assert c.get("/patients", headers={"X-Role": "admin", "X-User-Id": "x"}).status_code == 400
 
 
+@pytest.mark.parametrize("role, user_id", [
+    ("doctor", "doc_nobody"), ("doctor", "nurse_anita"),          # unknown, or a care_team user claiming doctor
+    ("care_team", "nurse_nobody"), ("care_team", "doc_mehta"),    # unknown, or the doctor claiming care_team
+    ("patient", "p_nobody"), ("patient", "doc_mehta"),            # unknown, or a staff id claiming patient
+    ("caregiver", "cg_nobody"), ("caregiver", "p_rajesh"),        # unknown, or a patient id claiming caregiver
+])
+@pytest.mark.parametrize("path", ["/patients", "/patients/p_rajesh/checklist/today"])
+def test_user_id_must_exist_for_its_role(role, user_id, path):
+    r = c.get(path, headers={"X-Role": role, "X-User-Id": user_id})
+    assert r.status_code == 401 and r.json()["detail"] == "Unknown user for role"
+
+
+def test_every_seeded_identity_is_accepted():
+    sunita, karthik = caregiver("Sunita Kumar"), caregiver("Karthik Sundaram")
+    for headers in (DOCTOR, NURSE, patient("p_rajesh"), patient("p_kamala"), sunita, karthik):
+        # 200 or 403 is fine here: what matters is the identity passed (not 401)
+        assert c.get("/patients/p_rajesh/checklist/today", headers=headers).status_code in (200, 403)
+    # a PENDING caregiver is a known user: it can accept, and is still refused data until then
+    assert c.get("/patients/p_priya/checklist/today", headers=karthik).status_code == 403
+    assert c.post(f"/caregivers/{karthik['X-User-Id']}/accept", headers=karthik).status_code == 200
+    assert c.get("/patients/p_priya/checklist/today", headers=karthik).status_code == 200
+
+
 # ---------- staff-only ----------
 
 @pytest.mark.parametrize("path", ["/patients", "/attention", "/dashboard/overview", "/queries", "/audit"])
