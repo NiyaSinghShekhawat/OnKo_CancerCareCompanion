@@ -14,7 +14,9 @@ ORDER = {"SOS": 0, "NEEDS_REVIEW": 1, "QUERY": 2, "FOLLOW_UP": 3}
 @router.get("/attention")
 def list_attention(db=Depends(get_db), actor=Depends(get_actor)):
     require(actor, *STAFF)
-    items = db.query(AttentionItem).filter(AttentionItem.status != "CLOSED").all()
+    # The attention queue is an active work queue. HANDLED/CLOSED items remain in the DB
+    # for Patient 360 history, but no longer occupy the live queue.
+    items = db.query(AttentionItem).filter(AttentionItem.status.in_(["PENDING", "ACKNOWLEDGED"])).all()
     items.sort(key=lambda i: (ORDER.get(i.label, 9), i.created_at))
     return [to_dict(i) for i in items]
 
@@ -32,7 +34,8 @@ def update_attention(aid: str, body: AttentionUpdate, db=Depends(get_db), actor=
         raise HTTPException(404, "Not found")
     before = {"status": a.status, "assigned_to": a.assigned_to}
     a.status = body.status
-    if body.assigned_to is not None:
+    fields_set = body.model_fields_set if hasattr(body, "model_fields_set") else body.__fields_set__
+    if "assigned_to" in fields_set:
         a.assigned_to = body.assigned_to
     audit.log(db, actor, "attention_update", "attention_item", a.id, before, body.model_dump())
     db.commit()
