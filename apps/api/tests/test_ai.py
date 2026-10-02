@@ -179,3 +179,13 @@ def test_gemini_key_sent_as_header_and_never_logged(monkeypatch, capsys):
     assert seen["headers"]["x-goog-api-key"] == secret
     assert secret not in seen["url"] and not seen["params"]
     assert secret not in capsys.readouterr().out
+
+
+def test_gemini_model_selection(monkeypatch):
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    monkeypatch.setenv("AI_MODEL", "claude-sonnet-4-6")
+    assert client._gemini_model() == client.GEMINI_DEFAULT_MODEL      # Anthropic model name is ignored
+    monkeypatch.setenv("AI_MODEL", "gemini-3.5-flash")
+    assert client._gemini_model() == "gemini-3.5-flash"
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.6-flash")
+    assert client._gemini_model() == "gemini-3.6-flash"
