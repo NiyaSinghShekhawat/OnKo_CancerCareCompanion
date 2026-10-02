@@ -61,6 +61,9 @@ async function req<T>(path: string, init?: RequestInit, actor?: ActorRef): Promi
     } catch {
       // Keep the plain-text backend response.
     }
+    if (res.status === 401 && /access code required/i.test(detail) && typeof window !== "undefined") {
+      window.location.assign("/access");
+    }
     throw new ApiError(res.status, detail);
   }
   return res.json() as Promise<T>;
