@@ -51,6 +51,12 @@ async function req<T>(path: string, actor: ServerActor = DOCTOR_ACTOR): Promise<
     if (res.status === 401 && /access code required/i.test(detail)) {
       redirect("/access");
     }
+    if (res.status === 401) {
+      redirect("/access-denied?status=401");
+    }
+    if (res.status === 403) {
+      redirect("/access-denied?status=403");
+    }
     throw new Error(`[${res.status}] ${detail}`);
   }
   return res.json() as Promise<T>;
