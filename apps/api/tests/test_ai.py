@@ -189,3 +189,13 @@ def test_gemini_model_selection(monkeypatch):
     assert client._gemini_model() == "gemini-3.5-flash"
     monkeypatch.setenv("GEMINI_MODEL", "gemini-3.6-flash")
     assert client._gemini_model() == "gemini-3.6-flash"
+
+
+def test_ai_input_is_capped(monkeypatch):
+    seen = {}
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "x" * 20)
+    monkeypatch.setenv("AI_PROVIDER", "anthropic")
+    monkeypatch.setenv("AI_MAX_INPUT_CHARS", "100")
+    monkeypatch.setattr(client, "_anthropic", lambda s, u: seen.setdefault("u", u) and '{"ok": 1}')
+    client.call_json("sys", "a" * 5000)
+    assert len(seen["u"]) < 200
