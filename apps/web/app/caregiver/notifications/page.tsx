@@ -1,1 +1,21 @@
-import CaregiverShell from "@/components/CaregiverShell";import {Bell,CalendarClock,FileText,ShieldAlert} from "lucide-react";import {api} from "@/lib/api";import {fmtDate} from "@/lib/format";export const dynamic="force-dynamic";export default async function CaregiverNotifications(){const d=await api.patient360("p_rajesh"),c=d.caregivers[0];if(!c)return null;const allowed=c.consent_status==="GRANTED"&&c.permissions.receive_escalations;const upcoming=d.timeline.filter(e=>["UPCOMING","CURRENT"].includes(e.status)).slice(0,4);return <CaregiverShell patient={d.patient} caregiver={c}><div className="mx-auto max-w-4xl"><p className="onko-eyebrow">Care coordination</p><h1 className="mt-1 text-[30px] font-bold sm:text-[38px]">Notifications</h1><p className="mt-2 text-[14px] leading-6 text-onko-muted">Only caregiver-directed updates allowed by the patient's current consent appear here.</p>{allowed?<div className="mt-7 grid gap-3"><div className="rounded-2xl bg-white p-5 shadow-sm"><div className="flex gap-3"><Bell className="text-onko-teal"/><div><strong>Escalation notifications enabled</strong><p className="mt-1 text-[12px] text-onko-muted">You can receive caregiver-directed escalation updates.</p></div></div></div>{upcoming.map(e=><div key={e.id} className="rounded-2xl bg-white p-5 shadow-sm"><div className="flex gap-3"><CalendarClock className="shrink-0 text-onko-teal"/><div><strong>{e.title}</strong><p className="mt-1 text-[12px] text-onko-muted">{fmtDate(e.scheduled_at)} · shared care activity</p></div></div></div>)}{d.reports.slice(0,2).map(r=><div key={r.id} className="rounded-2xl bg-white p-5 shadow-sm"><div className="flex gap-3"><FileText className="shrink-0 text-onko-teal"/><div><strong>{r.title}</strong><p className="mt-1 text-[12px] text-onko-muted">Shared record update</p></div></div></div>)}</div>:<div className="mt-7 rounded-3xl bg-white p-7 text-center shadow-sm"><ShieldAlert className="mx-auto text-onko-muted"/><h2 className="mt-3 text-[20px] font-bold">Escalation notifications are not shared</h2><p className="mt-2 text-[14px] text-onko-muted">The patient has not granted this caregiver permission.</p></div>}<p className="mt-5 text-[11px] text-onko-muted">Notification delivery is a UI prototype until the backend notification service is connected.</p></div></CaregiverShell>}
+import CaregiverShell from "@/components/CaregiverShell";
+import CaregiverEventCard from "@/components/CaregiverEventCard";
+import { Bell, ShieldAlert } from "lucide-react";
+import { serverApi } from "@/lib/server-api";
+
+export const dynamic = "force-dynamic";
+const CAREGIVER = { id: "cg_sunita", name: "Sunita Kumar", relation: "Wife" };
+
+export default async function CaregiverNotifications() {
+  const view = await serverApi.caregiverView(CAREGIVER.id);
+  return (
+    <CaregiverShell patient={view.patient} caregiver={CAREGIVER}>
+      <div className="mx-auto max-w-4xl">
+        <p className="onko-eyebrow">Care coordination</p>
+        <h1 className="mt-1 text-[30px] font-bold sm:text-[38px]">Notifications</h1>
+        <p className="mt-2 text-[14px] leading-6 text-onko-muted">Only caregiver-directed coordination information permitted by the current consent is shown.</p>
+        {view.receives_escalations?<div className="mt-7 grid gap-3"><div className="rounded-2xl bg-white p-5 shadow-sm"><div className="flex gap-3"><Bell className="text-onko-teal"/><div><strong>Escalation notifications enabled</strong><p className="mt-1 text-[12px] text-onko-muted">You may receive caregiver-directed escalation updates.</p></div></div></div>{view.upcoming.slice(0,4).map(e=><CaregiverEventCard key={e.id} event={e}/>)}</div>:<div className="mt-7 rounded-3xl bg-white p-7 text-center shadow-sm"><ShieldAlert className="mx-auto text-onko-muted"/><h2 className="mt-3 text-[20px] font-bold">Escalation notifications are not shared</h2><p className="mt-2 text-[14px] text-onko-muted">The patient has not granted this permission.</p></div>}
+      </div>
+    </CaregiverShell>
+  );
+}
