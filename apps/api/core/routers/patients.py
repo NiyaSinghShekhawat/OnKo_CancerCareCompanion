@@ -48,6 +48,7 @@ def patient_360(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
     events = db.query(CareEvent).filter_by(patient_id=pid).order_by(CareEvent.scheduled_at).all()
     queries = db.query(PatientQuery).filter_by(patient_id=pid).order_by(PatientQuery.created_at).all()
     reports = db.query(Report).filter_by(patient_id=pid).order_by(Report.uploaded_at).all()
+    attention_items = db.query(AttentionItem).filter_by(patient_id=pid).order_by(AttentionItem.created_at.desc()).all()
 
     since, now = p.last_reviewed_at, datetime.utcnow()
     new_events = [e for e in events if not since or e.scheduled_at >= since or review.is_open_today(e, now)]
@@ -69,7 +70,8 @@ def patient_360(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
         "query_history": [to_dict(x) for x in reversed(queries)],
         "reports": [to_dict(x) for x in reports],
         "caregivers": [to_dict(x) for x in db.query(Caregiver).filter_by(patient_id=pid)],
-        "attention": [to_dict(x) for x in db.query(AttentionItem).filter_by(patient_id=pid)],
+        "attention": [to_dict(x) for x in attention_items if x.status in {"PENDING", "ACKNOWLEDGED"}],
+        "attention_history": [to_dict(x) for x in attention_items],
         "since_last_review": summary,
     }
 
