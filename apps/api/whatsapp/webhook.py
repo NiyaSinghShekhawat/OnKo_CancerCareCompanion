@@ -68,12 +68,14 @@ async def verify_twilio(request: Request, x_twilio_signature: str | None = Heade
 
 # ---------------- who can trigger outgoing messages ----------------
 
-def staff_or_cron(request: Request, x_cron_secret: str | None = Header(None), db=Depends(get_db)) -> Actor:
-    """Doctor / care team (normal X-Role auth), or the daily scheduler presenting CRON_SECRET."""
+def staff_or_cron(x_role: str | None = Header(None), x_user_id: str | None = Header(None),
+                  x_cron_secret: str | None = Header(None), db=Depends(get_db)) -> Actor:
+    """Doctor / care team (normal X-Role auth), or the daily scheduler presenting CRON_SECRET.
+    In /docs: fill x-role = doctor and x-user-id = doc_mehta."""
     secret = (os.getenv("CRON_SECRET") or "").strip()
     if secret and x_cron_secret == secret:
         return SYSTEM
-    actor = get_actor(request.headers.get("x-role"), request.headers.get("x-user-id"), db)
+    actor = get_actor(x_role, x_user_id, db)
     require(actor, *STAFF)
     return actor
 
