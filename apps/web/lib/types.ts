@@ -25,6 +25,11 @@ export interface CarePlanItem {
   start_date: string; end_date: string | null; recurrence: string | null; approved_by: string; approved_at: string;
 }
 
+export type CarePlanItemPatch = Partial<Pick<CarePlanItem, "type" | "title" | "details" | "start_date" | "end_date" | "recurrence">>;
+export interface CarePlanDeleteResult {
+  id: string; patient_id: string; removed: boolean; future_events_removed: number; historical_events_preserved: number;
+}
+
 export interface CopilotItem {
   type: EventType; title: string; details: Record<string, string>; start_date: string;
   end_date: string | null; recurrence: string | null; source_span: string;
