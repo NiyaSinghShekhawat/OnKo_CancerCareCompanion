@@ -41,7 +41,7 @@ def _future_mutable_events(db, item_id: str, now: datetime) -> list[CareEvent]:
 def _validate_item_fields(item: CarePlanItem):
     if item.type not in _VALID_TYPES:
         raise HTTPException(400, "Unknown care-plan item type")
-    if not item.title.strip():
+    if not item.title or not item.title.strip():
         raise HTTPException(400, "Care-plan item title is required")
     if not _valid_iso(item.start_date):
         raise HTTPException(400, "Set a valid start date")
@@ -109,7 +109,6 @@ def approve_draft(draft_id: str, db=Depends(get_db), actor=Depends(get_actor)):
                             details=it.get("details", {}), start_date=it["start_date"],
                             end_date=it.get("end_date"), recurrence=it.get("recurrence"),
                             approved_by=actor.user_id)
-        _validate_item_fields(item)
         db.add(item)
         db.flush()
         for when in recurrence.expand(item.start_date, item.end_date, item.recurrence):
