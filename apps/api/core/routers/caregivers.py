@@ -35,24 +35,81 @@ def invite(pid: str, body: CaregiverIn, db=Depends(get_db), actor=Depends(get_ac
 
 
 class CaregiverUpdate(BaseModel):
-    consent_status: str | None = None
+    consent_status: str | None = None   # rejected: consent moves only through accept / revoke / reinvite
     permissions: dict | None = None
+
+
+def _get_cg(db, cid: str) -> Caregiver:
+    cg = db.get(Caregiver, cid)
+    if not cg:
+        raise HTTPException(404, "Caregiver not found")
+    return cg
 
 
 @router.patch("/caregivers/{cid}")
 def update_cg(cid: str, body: CaregiverUpdate, db=Depends(get_db), actor=Depends(get_actor)):
-    cg = db.get(Caregiver, cid)
-    if not cg:
-        raise HTTPException(404, "Not found")
+    """Assign responsibilities (permissions). Consent has its own routes."""
+    if body.consent_status is not None:
+        raise HTTPException(400, "consent_status can't be set here. Use POST /caregivers/{id}/accept, "
+                                 "/caregivers/{id}/revoke or /caregivers/{id}/reinvite")
+    cg = _get_cg(db, cid)
     require_patient_access(actor, cg.patient_id, db, allow_caregivers=False)   # no granting yourself permissions
-    before = {"consent_status": cg.consent_status, "permissions": cg.permissions}
-    if body.consent_status:
-        cg.consent_status = body.consent_status
+    before = {"permissions": cg.permissions}
     if body.permissions is not None:
         cg.permissions = body.permissions
-    audit.log(db, actor, "caregiver_updated", "caregiver", cg.id, before, body.model_dump())
+    audit.log(db, actor, "caregiver_updated", "caregiver", cg.id, before, {"permissions": cg.permissions})
     db.commit()
     return to_dict(cg)
+
+
+# ---- Consent lifecycle: Invite (POST /patients/{id}/caregivers) → Accept → Switch / Revoke → Re-invite ----
+
+def _move_consent(db, actor, cg: Caregiver, to: str, action: str) -> dict:
+    before = cg.consent_status
+    cg.consent_status = to
+    audit.log(db, actor, action, "caregiver", cg.id, {"consent_status": before}, {"consent_status": to})
+    db.commit()
+    return to_dict(cg)
+
+
+@router.post("/caregivers/{cid}/accept")
+def accept_consent(cid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    """Only the invited caregiver can accept. PENDING → GRANTED."""
+    require(actor, "caregiver")
+    if actor.user_id != cid:
+        raise HTTPException(403, "Only the invited caregiver can accept")
+    cg = _get_cg(db, cid)
+    if cg.consent_status == "GRANTED":
+        return to_dict(cg)
+    if cg.consent_status == "REVOKED":
+        raise HTTPException(409, "Consent was revoked; the patient must re-invite")
+    return _move_consent(db, actor, cg, "GRANTED", "caregiver_consent_accepted")
+
+
+@router.post("/caregivers/{cid}/revoke")
+def revoke_consent(cid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    """The patient (own caregivers), doctor / care_team, or the caregiver themself (stepping away).
+    Any state → REVOKED; takes effect immediately, since every caregiver check and notify_caregivers look for
+    GRANTED at the time of the call. No attention reasons or stored notifications are tied to a caregiver,
+    so there is nothing else to clean up."""
+    cg = _get_cg(db, cid)
+    if not (actor.role == "caregiver" and actor.user_id == cid):
+        require_patient_access(actor, cg.patient_id, db, allow_caregivers=False)
+    if cg.consent_status == "REVOKED":
+        return to_dict(cg)
+    return _move_consent(db, actor, cg, "REVOKED", "caregiver_consent_revoked")
+
+
+@router.post("/caregivers/{cid}/reinvite")
+def reinvite(cid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    """The patient (own caregivers) or doctor / care_team. REVOKED → PENDING; the caregiver must accept again."""
+    cg = _get_cg(db, cid)
+    require_patient_access(actor, cg.patient_id, db, allow_caregivers=False)
+    if cg.consent_status == "PENDING":
+        return to_dict(cg)
+    if cg.consent_status == "GRANTED":
+        raise HTTPException(409, "Caregiver already has consent; nothing to re-invite")
+    return _move_consent(db, actor, cg, "PENDING", "caregiver_reinvited")
 
 
 VIEW_DAYS = 7

@@ -90,10 +90,11 @@ def _load(db):
                           summary="Patient reports nausea since yesterday and mild discomfort.",
                           route_to="care_team_queue"))
     db.add_all([
-        m.Caregiver(patient_id="p_rajesh", name="Sunita Kumar", relation="Wife",
+        # Fixed ids (cg_<first name>) so demo logins and tests survive a reseed, like the p_<name> patient ids.
+        m.Caregiver(id="cg_sunita", patient_id="p_rajesh", name="Sunita Kumar", relation="Wife",
                     phone_whatsapp="whatsapp:+910000000010", consent_status="GRANTED",
                     permissions={"view_journey": True, "upload_reports": True, "receive_escalations": True}),
-        m.Caregiver(patient_id="p_priya", name="Karthik Sundaram", relation="Brother",
+        m.Caregiver(id="cg_karthik", patient_id="p_priya", name="Karthik Sundaram", relation="Brother",
                     phone_whatsapp="whatsapp:+910000000011", consent_status="PENDING"),
     ])
 
@@ -123,7 +124,7 @@ def _load_other_journey_states(db, now, d):
                          journey_state_changed_at=d(-changed_days_ago), journey_chapter=chapter, **kw)
 
     def caregiver(pid, name, relation, n):
-        return m.Caregiver(patient_id=pid, name=name, relation=relation, phone_whatsapp=f"whatsapp:+9100000000{n:02d}",
+        return m.Caregiver(id=f"cg_{name.split()[0].lower()}", patient_id=pid, name=name, relation=relation, phone_whatsapp=f"whatsapp:+9100000000{n:02d}",
                            consent_status="GRANTED",
                            permissions={"view_journey": True, "upload_reports": True, "receive_escalations": True})
 

@@ -65,7 +65,10 @@ Shapes of every entity live in `schemas.json`. AI output shapes live in `ai_outp
 |---|---|---|
 | GET | `/patients/{id}/caregivers` | `Caregiver[]` |
 | POST | `/patients/{id}/caregivers` | invite → `Caregiver` (consent `PENDING`) |
-| PATCH | `/caregivers/{id}` | `{ consent_status, permissions }` |
+| PATCH | `/caregivers/{id}` | `{ permissions }` |
+| POST | `/caregivers/{id}/accept` | → `Caregiver` (that caregiver only; PENDING → GRANTED, REVOKED → 409) |
+| POST | `/caregivers/{id}/revoke` | → `Caregiver` (patient or doctor / care_team; any → REVOKED) |
+| POST | `/caregivers/{id}/reinvite` | → `Caregiver` (patient or doctor / care_team; REVOKED → PENDING) |
 | GET | `/caregivers/{id}/view` | `CaregiverView` (that caregiver or a doctor; needs consent `GRANTED` + `view_journey`) |
 
 ## Audit — owner: Samprada
