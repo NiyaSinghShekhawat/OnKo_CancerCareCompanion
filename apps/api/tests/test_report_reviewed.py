@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from core import seed
 from core.db import SessionLocal
-from core.models import AttentionItem, AuditLog, Caregiver, Report
+from core.models import AttentionItem, AuditLog, Report
 from core.services import attention
 from main import app
 
@@ -65,7 +65,7 @@ def test_care_team_can_mark_reviewed(db):
 @pytest.mark.parametrize("role", ["patient", "caregiver"])
 def test_other_roles_refused_and_nothing_changes(db, role):
     rid = seeded_report_id(db)
-    user = "p_rajesh" if role == "patient" else db.query(Caregiver).filter_by(name="Sunita Kumar").one().id
+    user = "p_rajesh" if role == "patient" else "cg_sunita"
     r = c.patch(f"/reports/{rid}/reviewed", headers={"X-Role": role, "X-User-Id": user})   # Rajesh's own report
     assert r.status_code == 403
     assert db.get(Report, rid).reviewed is False

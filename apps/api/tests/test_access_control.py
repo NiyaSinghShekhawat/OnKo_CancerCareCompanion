@@ -18,10 +18,7 @@ def patient(pid):
     return {"X-Role": "patient", "X-User-Id": pid}
 
 
-def caregiver(name):
-    s = SessionLocal()
-    cid = s.query(Caregiver).filter_by(name=name).one().id
-    s.close()
+def caregiver(cid):
     return {"X-Role": "caregiver", "X-User-Id": cid}
 
 
@@ -44,8 +41,8 @@ WHO = {
     "care_team": lambda: NURSE,
     "rajesh himself": lambda: patient("p_rajesh"),
     "another patient": lambda: patient("p_priya"),
-    "rajesh's caregiver": lambda: caregiver("Sunita Kumar"),
-    "someone else's caregiver": lambda: caregiver("Ayesha Ali"),
+    "rajesh's caregiver": lambda: caregiver("cg_sunita"),
+    "someone else's caregiver": lambda: caregiver("cg_ayesha"),
 }
 ALLOWED = {"doctor", "care_team", "rajesh himself", "rajesh's caregiver"}
 
@@ -77,7 +74,7 @@ def test_user_id_must_exist_for_its_role(role, user_id, path):
 
 
 def test_every_seeded_identity_is_accepted():
-    sunita, karthik = caregiver("Sunita Kumar"), caregiver("Karthik Sundaram")
+    sunita, karthik = caregiver("cg_sunita"), caregiver("cg_karthik")
     for headers in (DOCTOR, NURSE, patient("p_rajesh"), patient("p_kamala"), sunita, karthik):
         # 200 or 403 is fine here: what matters is the identity passed (not 401)
         assert c.get("/patients/p_rajesh/checklist/today", headers=headers).status_code in (200, 403)
@@ -128,7 +125,7 @@ def test_checklist_today_includes_consented_caregiver(who):
 
 
 def test_caregiver_reads_go_through_their_own_minimized_view():
-    sunita = caregiver("Sunita Kumar")
+    sunita = caregiver("cg_sunita")
     for path in NO_CAREGIVER_READS:
         assert c.get(path, headers=sunita).status_code == 403, path
     view = c.get(f"/caregivers/{sunita['X-User-Id']}/view", headers=sunita)
@@ -136,13 +133,13 @@ def test_caregiver_reads_go_through_their_own_minimized_view():
 
 
 def test_pending_caregiver_has_no_access():
-    karthik = caregiver("Karthik Sundaram")
+    karthik = caregiver("cg_karthik")
     assert c.get("/patients/p_priya/checklist/today", headers=karthik).status_code == 403
     assert c.post("/sos", json={"patient_id": "p_priya", "channel": "app"}, headers=karthik).status_code == 403
 
 
 def test_revoking_consent_removes_access_immediately():
-    sunita = caregiver("Sunita Kumar")
+    sunita = caregiver("cg_sunita")
     cid = sunita["X-User-Id"]
     assert c.get("/patients/p_rajesh/checklist/today", headers=sunita).status_code == 200
     assert c.get(f"/caregivers/{cid}/view", headers=sunita).status_code == 200
@@ -194,7 +191,7 @@ MINIMIZED = {"id", "type", "title", "scheduled_at", "status"}
 
 
 def test_checklist_items_are_minimized_for_caregivers_only():
-    sunita = caregiver("Sunita Kumar")
+    sunita = caregiver("cg_sunita")
     as_cg = c.get("/patients/p_rajesh/checklist/today", headers=sunita).json()["items"]
     assert as_cg and all(set(e) == MINIMIZED for e in as_cg)
     assert "Dexamethasone" not in str(as_cg)                      # chemo pre-medication instructions are details
@@ -216,7 +213,7 @@ def test_status_update_response_shape(who, minimized):
 
 
 def test_caregiver_sees_the_same_event_shape_everywhere():
-    sunita = caregiver("Sunita Kumar")
+    sunita = caregiver("cg_sunita")
     checklist = {e["id"]: e for e in c.get("/patients/p_rajesh/checklist/today", headers=sunita).json()["items"]}
     view = {e["id"]: e for e in c.get(f"/caregivers/{sunita['X-User-Id']}/view", headers=sunita).json()["upcoming"]}
     shared = checklist.keys() & view.keys()
@@ -227,7 +224,7 @@ def test_caregiver_sees_the_same_event_shape_everywhere():
 
 
 def test_caregiver_can_upload_but_not_read_reports():
-    sunita = caregiver("Sunita Kumar")
+    sunita = caregiver("cg_sunita")
     r = c.post("/patients/p_rajesh/reports", json={"title": "LFT", "text": "ALT 30", "uploaded_by_role": "caregiver"},
                headers=sunita)
     assert r.status_code == 200
@@ -235,7 +232,7 @@ def test_caregiver_can_upload_but_not_read_reports():
 
 
 def test_caregiver_without_upload_permission_still_refused():
-    sunita = caregiver("Sunita Kumar")
+    sunita = caregiver("cg_sunita")
     c.patch(f"/caregivers/{sunita['X-User-Id']}", headers=DOCTOR, json={"permissions": {
         "view_journey": True, "upload_reports": False, "receive_escalations": True}})
     r = c.post("/patients/p_rajesh/reports", json={"title": "LFT", "text": "ALT 30"}, headers=sunita)
@@ -245,7 +242,7 @@ def test_caregiver_without_upload_permission_still_refused():
 # ---------- managing caregivers ----------
 
 def test_caregiver_cannot_change_own_permissions_or_invite():
-    sunita = caregiver("Sunita Kumar")
+    sunita = caregiver("cg_sunita")
     cid = sunita["X-User-Id"]
     perms = {"permissions": {"view_journey": True, "upload_reports": True, "receive_escalations": True}}
     assert c.patch(f"/caregivers/{cid}", json=perms, headers=sunita).status_code == 403

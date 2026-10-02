@@ -89,6 +89,21 @@ def test_whatsapp_numbers_are_unique(db):
     assert len(numbers) == len(set(numbers))
 
 
+SEEDED_CAREGIVERS = {"cg_sunita": ("Sunita Kumar", "p_rajesh"), "cg_karthik": ("Karthik Sundaram", "p_priya"),
+                     "cg_lakshmi": ("Lakshmi Iyer", "p_meera"), "cg_harpreet": ("Harpreet Singh", "p_vikram"),
+                     "cg_ayesha": ("Ayesha Ali", "p_farhan"), "cg_suresh": ("Suresh Rao", "p_kamala")}
+
+
+def test_seeded_caregivers_have_fixed_ids_that_survive_a_reset(db):
+    assert {g.id: (g.name, g.patient_id) for g in db.query(Caregiver)} == SEEDED_CAREGIVERS
+    assert c.post("/demo/reset", headers=DOCTOR).status_code == 200
+    s = SessionLocal()
+    assert {g.id: (g.name, g.patient_id) for g in s.query(Caregiver)} == SEEDED_CAREGIVERS
+    s.close()
+    sunita = {"X-Role": "caregiver", "X-User-Id": "cg_sunita"}
+    assert c.get("/caregivers/cg_sunita/view", headers=sunita).status_code == 200
+
+
 def test_no_interpretation_words_in_seeded_text(db):
     texts = []
     for pid in NEW:

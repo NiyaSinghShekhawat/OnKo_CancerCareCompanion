@@ -24,13 +24,6 @@ def as_cg(cid):
     return {"X-Role": "caregiver", "X-User-Id": cid}
 
 
-def cg_id(name):
-    s = SessionLocal()
-    cid = s.query(Caregiver).filter_by(name=name).one().id
-    s.close()
-    return cid
-
-
 def status_of(cid):
     s = SessionLocal()
     st = s.get(Caregiver, cid).consent_status
@@ -92,8 +85,8 @@ def test_full_lifecycle_with_audit():
 # ---------- accept ----------
 
 def test_only_the_invited_caregiver_can_accept():
-    karthik = cg_id("Karthik Sundaram")
-    for headers in (as_cg(cg_id("Sunita Kumar")), DOCTOR, NURSE, patient("p_priya")):
+    karthik = "cg_karthik"
+    for headers in (as_cg("cg_sunita"), DOCTOR, NURSE, patient("p_priya")):
         assert post(karthik, "accept", headers).status_code == 403
     assert status_of(karthik) == "PENDING"
     assert post(karthik, "accept", as_cg(karthik)).status_code == 200
@@ -101,7 +94,7 @@ def test_only_the_invited_caregiver_can_accept():
 
 
 def test_accept_when_already_granted_is_a_no_op():
-    sunita = cg_id("Sunita Kumar")
+    sunita = "cg_sunita"
     r = post(sunita, "accept", as_cg(sunita))
     assert r.status_code == 200 and r.json()["consent_status"] == "GRANTED"
     assert consent_audit(sunita) == []
@@ -118,16 +111,16 @@ def test_accept_as_unknown_caregiver_401():
                                           ("another patient", False), ("the caregiver", True),
                                           ("another caregiver", False)])
 def test_who_can_revoke(who, allowed):
-    sunita = cg_id("Sunita Kumar")
+    sunita = "cg_sunita"
     headers = {"rajesh": patient("p_rajesh"), "doctor": DOCTOR, "care_team": NURSE,
                "another patient": patient("p_priya"), "the caregiver": as_cg(sunita),
-               "another caregiver": as_cg(cg_id("Ayesha Ali"))}[who]
+               "another caregiver": as_cg("cg_ayesha")}[who]
     assert post(sunita, "revoke", headers).status_code == (200 if allowed else 403)
     assert status_of(sunita) == ("REVOKED" if allowed else "GRANTED")
 
 
 def test_caregiver_can_step_away_with_audit():
-    sunita = cg_id("Sunita Kumar")
+    sunita = "cg_sunita"
     r = post(sunita, "revoke", as_cg(sunita))
     assert r.status_code == 200 and r.json()["consent_status"] == "REVOKED"
     assert consent_audit(sunita) == [("caregiver_consent_revoked", sunita,
@@ -138,7 +131,7 @@ def test_caregiver_can_step_away_with_audit():
 
 
 def test_caregiver_cannot_revoke_a_fellow_caregiver():
-    sunita = cg_id("Sunita Kumar")
+    sunita = "cg_sunita"
     ravi = c.post("/patients/p_rajesh/caregivers", headers=patient("p_rajesh"),
                   json={"name": "Ravi Kumar", "relation": "Son", "phone_whatsapp": "whatsapp:+910000000099"}).json()["id"]
     post(ravi, "accept", as_cg(ravi))
@@ -147,7 +140,7 @@ def test_caregiver_cannot_revoke_a_fellow_caregiver():
 
 
 def test_revoke_from_pending_and_revoke_twice():
-    karthik = cg_id("Karthik Sundaram")
+    karthik = "cg_karthik"
     assert post(karthik, "revoke", patient("p_priya")).json()["consent_status"] == "REVOKED"
     assert post(karthik, "revoke", DOCTOR).status_code == 200            # already revoked: no-op
     assert [a for a, *_ in consent_audit(karthik)] == ["caregiver_consent_revoked"]
@@ -158,7 +151,7 @@ def test_revoke_unknown_caregiver_404():
 
 
 def test_revoke_takes_effect_immediately_everywhere(capsys):
-    sunita = cg_id("Sunita Kumar")
+    sunita = "cg_sunita"
     assert c.get("/patients/p_rajesh/checklist/today", headers=as_cg(sunita)).status_code == 200
     post(sunita, "revoke", patient("p_rajesh"))
     assert c.get("/patients/p_rajesh/checklist/today", headers=as_cg(sunita)).status_code == 403
@@ -172,10 +165,10 @@ def test_revoke_takes_effect_immediately_everywhere(capsys):
 # ---------- reinvite ----------
 
 def test_reinvite_only_from_revoked():
-    sunita = cg_id("Sunita Kumar")
+    sunita = "cg_sunita"
     r = post(sunita, "reinvite", patient("p_rajesh"))
     assert r.status_code == 409 and status_of(sunita) == "GRANTED"
-    karthik = cg_id("Karthik Sundaram")
+    karthik = "cg_karthik"
     assert post(karthik, "reinvite", patient("p_priya")).json()["consent_status"] == "PENDING"   # no-op
     assert consent_audit(karthik) == []
 
@@ -183,7 +176,7 @@ def test_reinvite_only_from_revoked():
 @pytest.mark.parametrize("who, allowed", [("rajesh", True), ("doctor", True), ("care_team", True),
                                           ("another patient", False), ("the caregiver", False)])
 def test_who_can_reinvite(who, allowed):
-    sunita = cg_id("Sunita Kumar")
+    sunita = "cg_sunita"
     post(sunita, "revoke", DOCTOR)
     headers = {"rajesh": patient("p_rajesh"), "doctor": DOCTOR, "care_team": NURSE,
                "another patient": patient("p_priya"), "the caregiver": as_cg(sunita)}[who]
@@ -196,7 +189,7 @@ def test_who_can_reinvite(who, allowed):
 @pytest.mark.parametrize("body", [{"consent_status": "GRANTED"},
                                   {"consent_status": "REVOKED", "permissions": {"view_journey": False}}])
 def test_patch_rejects_consent_status(body):
-    karthik = cg_id("Karthik Sundaram")
+    karthik = "cg_karthik"
     r = c.patch(f"/caregivers/{karthik}", json=body, headers=DOCTOR)
     assert r.status_code == 400
     assert all(route in r.json()["detail"] for route in ("/accept", "/revoke", "/reinvite"))
@@ -204,7 +197,7 @@ def test_patch_rejects_consent_status(body):
 
 
 def test_patch_still_assigns_permissions_with_audit():
-    sunita = cg_id("Sunita Kumar")
+    sunita = "cg_sunita"
     perms = {"view_journey": True, "upload_reports": False, "receive_escalations": True}
     r = c.patch(f"/caregivers/{sunita}", json={"permissions": perms}, headers=patient("p_rajesh"))
     assert r.status_code == 200 and r.json()["permissions"] == perms and r.json()["consent_status"] == "GRANTED"
