@@ -56,5 +56,5 @@ def overview(db=Depends(get_db), actor=Depends(get_actor)):
         "missed_activities": db.query(CareEvent).filter(CareEvent.status.in_(["REPORTED_MISSED", "NO_RESPONSE"])).count(),
         "open_queries": db.query(PatientQuery).filter(PatientQuery.status != "RESOLVED").count(),
         "reports_pending_review": db.query(Report).filter_by(reviewed=False).count(),
-        "sos_open": db.query(AttentionItem).filter_by(label="SOS").filter(AttentionItem.status != "CLOSED").count(),
+        "sos_open": db.query(AttentionItem).filter_by(label="SOS").filter(AttentionItem.status.in_(["PENDING", "ACKNOWLEDGED"])).count(),
     }
