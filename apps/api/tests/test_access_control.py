@@ -165,6 +165,44 @@ def test_upload_report(who):
     assert r.status_code == (200 if who in ALLOWED else 403)
 
 
+# ---------- minimized event shape for caregivers ----------
+
+MINIMIZED = {"id", "type", "title", "scheduled_at", "status"}
+
+
+def test_checklist_items_are_minimized_for_caregivers_only():
+    sunita = caregiver("Sunita Kumar")
+    as_cg = c.get("/patients/p_rajesh/checklist/today", headers=sunita).json()["items"]
+    assert as_cg and all(set(e) == MINIMIZED for e in as_cg)
+    assert "Dexamethasone" not in str(as_cg)                      # chemo pre-medication instructions are details
+    for who in ("doctor", "care_team", "rajesh himself"):
+        full = c.get("/patients/p_rajesh/checklist/today", headers=WHO[who]()).json()["items"]
+        assert [e["id"] for e in full] == [e["id"] for e in as_cg]
+        assert all({"details", "journey_chapter", "source"} <= set(e) for e in full)
+        assert "Dexamethasone" in str(full)
+
+
+@pytest.mark.parametrize("who, minimized", [("rajesh's caregiver", True), ("rajesh himself", False),
+                                            ("doctor", False), ("care_team", False)])
+def test_status_update_response_shape(who, minimized):
+    r = c.patch(f"/events/{event_of('p_rajesh')}/status", json={"status": "COMPLETED"}, headers=WHO[who]())
+    assert r.status_code == 200 and r.json()["status"] == "COMPLETED"
+    assert (set(r.json()) == MINIMIZED) is minimized
+    if not minimized:
+        assert "details" in r.json()
+
+
+def test_caregiver_sees_the_same_event_shape_everywhere():
+    sunita = caregiver("Sunita Kumar")
+    checklist = {e["id"]: e for e in c.get("/patients/p_rajesh/checklist/today", headers=sunita).json()["items"]}
+    view = {e["id"]: e for e in c.get(f"/caregivers/{sunita['X-User-Id']}/view", headers=sunita).json()["upcoming"]}
+    shared = checklist.keys() & view.keys()
+    assert shared and all(checklist[i] == view[i] for i in shared)
+    eid = next(iter(shared))
+    updated = c.patch(f"/events/{eid}/status", json={"status": "COMPLETED"}, headers=sunita).json()
+    assert updated == {**checklist[eid], "status": "COMPLETED"}
+
+
 def test_caregiver_can_upload_but_not_read_reports():
     sunita = caregiver("Sunita Kumar")
     r = c.post("/patients/p_rajesh/reports", json={"title": "LFT", "text": "ALT 30", "uploaded_by_role": "caregiver"},

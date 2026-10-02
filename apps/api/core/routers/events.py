@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from core.db import get_db
 from core.auth import get_actor, require, require_patient_access
 from core.models import CareEvent, Patient
-from core.serialize import to_dict
+from core.serialize import event_for
 from core.services import audit, checklist, attention, journey_state
 from core import seed
 
@@ -31,7 +31,7 @@ def set_status(event_id: str, body: StatusIn, db=Depends(get_db), actor=Depends(
         attention.raise_missed(db, db.get(Patient, e.patient_id), e)   # no-op for PALLIATIVE
     audit.log(db, actor, "event_status", "care_event", e.id, {"status": before}, {"status": body.status})
     db.commit()
-    return to_dict(e)
+    return event_for(actor, e)
 
 
 @router.get("/patients/{pid}/checklist/today")
@@ -41,7 +41,7 @@ def today(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
     p = db.get(Patient, pid)
     paused = bool(p) and journey_state.checklist_paused(p.journey_state)
     return {"patient_id": pid, "date": datetime.utcnow().date().isoformat(),
-            "items": [] if paused else [to_dict(i) for i in items],
+            "items": [] if paused else [event_for(actor, i) for i in items],
             "window_closes_at": closes.isoformat(), "sent": False,
             "paused": paused, "reason": f"Journey state {p.journey_state}" if paused else None}
 

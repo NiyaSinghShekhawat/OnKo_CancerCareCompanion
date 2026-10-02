@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from core.db import get_db
 from core.auth import get_actor, require, require_patient_access
 from core.models import Caregiver, CareEvent, Patient
-from core.serialize import to_dict
+from core.serialize import minimized_event, to_dict
 from core.services import audit, journey_state, review
 
 router = APIRouter(tags=["caregivers"])
@@ -59,11 +59,6 @@ VIEW_DAYS = 7
 RECENT_STATUSES = {"COMPLETED", "REPORTED_MISSED", "NO_RESPONSE"}
 
 
-def _event_summary(e: CareEvent) -> dict:
-    """Data minimization: no details (doses, instructions), nothing beyond what's needed to follow along."""
-    return {"id": e.id, "type": e.type, "title": e.title, "scheduled_at": e.scheduled_at.isoformat(), "status": e.status}
-
-
 @router.get("/caregivers/{cid}/view")
 def caregiver_view(cid: str, db=Depends(get_db), actor=Depends(get_actor)):
     """What a consented caregiver may see. No diagnosis, reports, queries, attention items or event details."""
@@ -94,8 +89,8 @@ def caregiver_view(cid: str, db=Depends(get_db), actor=Depends(get_actor)):
     return {
         "patient": {"id": p.id, "name": p.name, "journey_state": p.journey_state,
                     "preferred_language": p.preferred_language},
-        "upcoming": [_event_summary(e) for e in upcoming],
-        "recent": [_event_summary(e) for e in recent],
+        "upcoming": [minimized_event(e) for e in upcoming],
+        "recent": [minimized_event(e) for e in recent],
         "can_upload_reports": bool(perms.get("upload_reports")),
         "receives_escalations": bool(perms.get("receive_escalations")),
     }
