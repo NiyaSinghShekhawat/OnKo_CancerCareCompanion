@@ -1,6 +1,6 @@
 """Clearing attention reasons when a query is resolved or a report is reviewed (owner: Samprada).
 DB is test_onko.db (set in conftest.py), reseeded before every test — never onko.db."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,8 +8,9 @@ from fastapi.testclient import TestClient
 from core import seed
 from core.auth import Actor
 from core.db import SessionLocal
-from core.models import AttentionItem, AuditLog, Patient, PatientQuery, Report
+from core.models import AttentionItem, AuditLog, CareEvent, Patient, PatientQuery, Report
 from core.services import attention
+from core.timeutil import utcnow
 from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
@@ -102,7 +103,8 @@ def test_report_reviewed_clears_seeded_report_reason(db):
     attention.clear_reason(db, db.get(Patient, "p_rajesh"), "NEEDS_REVIEW", attention.report_reason(rep.title), DOCTOR)
     db.commit()
     (left,) = open_item("NEEDS_REVIEW", "p_rajesh")
-    assert left["reasons"] == ["Medication reported missed: Capecitabine evening dose"]
+    missed = db.query(CareEvent).filter_by(patient_id="p_rajesh", status="REPORTED_MISSED").one()
+    assert left["reasons"] == [attention.missed_reason(missed)]
     attention.recompute_for_patient(db, db.get(Patient, "p_rajesh"))   # reviewed report is not re-raised
     db.commit()
     assert open_item("NEEDS_REVIEW", "p_rajesh")[0]["reasons"] == left["reasons"]
@@ -143,7 +145,7 @@ def test_resolving_one_query_keeps_the_others_reason(db):
 
 def test_resolving_also_clears_unresolved_over_24h_reason(db):
     q = seeded_query(db)
-    q.created_at = datetime.utcnow() - timedelta(hours=30)
+    q.created_at = utcnow() - timedelta(hours=30)
     db.commit()
     c.post("/demo/advance-day")
     reasons = open_item("QUERY", "p_rajesh")[0]["reasons"]

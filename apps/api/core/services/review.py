@@ -4,6 +4,7 @@ Same ReviewSummary shape as contracts/ai_outputs.json. States what was recorded,
 """
 from datetime import datetime, timedelta
 from itertools import groupby
+from core.timeutil import utcnow
 
 STATUS_LABELS = {"COMPLETED": "Completed", "REPORTED_MISSED": "Reported missed", "NO_RESPONSE": "No response"}
 STILL_OPEN = {"UPCOMING", "CURRENT", "RESCHEDULED"}
@@ -31,7 +32,7 @@ def is_open_today(event, now: datetime) -> bool:
 
 def fallback_summary(events, queries, reports, since: datetime | None, now: datetime | None = None) -> dict:
     """events/queries/reports are the model rows already filtered to 'since last review'."""
-    now = now or datetime.utcnow()
+    now = now or utcnow()
     events = sorted(events, key=lambda e: e.scheduled_at)
     bullets = []
 

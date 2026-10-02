@@ -1,6 +1,6 @@
 """RELAPSE starts a new journey chapter; history is kept (owner: Samprada).
 DB is test_onko.db (set in conftest.py), reseeded before every test — never onko.db."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from core import seed
 from core.db import SessionLocal
 from core.models import AuditLog, CarePlanDraft, CareEvent, Patient
+from core.timeutil import utcnow
 from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
@@ -51,7 +52,7 @@ def approve_plan(db, pid, start: str, title="Capecitabine (new regimen)", recurr
 
 
 def day(days_from_today: int) -> str:
-    return (datetime.utcnow() + timedelta(days=days_from_today)).date().isoformat()
+    return (utcnow() + timedelta(days=days_from_today)).date().isoformat()
 
 
 def test_seed_is_chapter_1_except_the_relapse_patient(db):
@@ -104,8 +105,8 @@ def test_any_other_creation_path_gets_current_chapter(db):
     set_state("p_rajesh", "RELAPSE")
     set_state("p_rajesh", "ACTIVE_TREATMENT")
     set_state("p_rajesh", "RELAPSE")
-    e = CareEvent(patient_id="p_rajesh", type="APPOINTMENT", title="Created elsewhere", scheduled_at=datetime.utcnow())
-    explicit = CareEvent(patient_id="p_rajesh", type="APPOINTMENT", title="Explicit", scheduled_at=datetime.utcnow(),
+    e = CareEvent(patient_id="p_rajesh", type="APPOINTMENT", title="Created elsewhere", scheduled_at=utcnow())
+    explicit = CareEvent(patient_id="p_rajesh", type="APPOINTMENT", title="Explicit", scheduled_at=utcnow(),
                          journey_chapter=1)
     db.add_all([e, explicit])
     db.commit()

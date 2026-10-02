@@ -1,19 +1,21 @@
 """Seed has one patient per journey state, and each behaves as the state rules say (owner: Samprada).
 DB is test_onko.db (set in conftest.py), reseeded before every test — never onko.db."""
 import re
-from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
 
 from core import seed
+from core.auth import Actor
 from core.db import SessionLocal
 from core.models import AttentionItem, CarePlanDraft, CareEvent, Caregiver, Patient, PatientQuery
 from core.services import attention
+from core.timeutil import utcnow
 from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
 DOCTOR = {"X-Role": "doctor", "X-User-Id": "doc_mehta"}
+DOCTOR_ACTOR = Actor("doctor", "doc_mehta")
 NEW = {"p_meera": "PALLIATIVE", "p_vikram": "TRANSFER_OF_CARE", "p_farhan": "RELAPSE", "p_kamala": "DECEASED"}
 INTERPRETATION = re.compile(r"worsen|improv|concern(?!\s+logged)|risk|severe|critical|deteriorat|prognos|terminal|"
                             r"anaemi|anemi|abnormal|poor|dying|end[- ]stage", re.IGNORECASE)
@@ -78,7 +80,7 @@ def test_new_patients_have_complete_consistent_profiles(db):
         assert p.age and p.gender in {"M", "F"}
         assert re.fullmatch(r"whatsapp:\+9100000000\d\d", p.phone_whatsapp)
         assert p.previous_journey_state and p.previous_journey_state != state
-        assert p.journey_state_changed_at < datetime.utcnow()
+        assert p.journey_state_changed_at < utcnow()
         (cg,) = db.query(Caregiver).filter_by(patient_id=pid).all()
         assert cg.consent_status == "GRANTED" and cg.type == "family"
         assert re.fullmatch(r"whatsapp:\+9100000000\d\d", cg.phone_whatsapp)
@@ -116,11 +118,29 @@ def test_no_interpretation_words_in_seeded_text(db):
 
 
 def test_seeded_attention_is_what_the_rules_produce(db):
+    """All 8 patients: re-running the rules changes no seeded reason (Arjun's streak text is regenerated identically)."""
     before = snapshot(db)
-    for pid in NEW:
-        attention.recompute_for_patient(db, db.get(Patient, pid))
+    for p in db.query(Patient).all():
+        attention.recompute_for_patient(db, p)
     db.commit()
     assert snapshot(db) == before
+
+
+def test_original_seeded_reasons_use_the_rule_format_and_can_be_cleared(db):
+    missed = db.query(CareEvent).filter_by(patient_id="p_rajesh", status="REPORTED_MISSED").one()
+    streak = (db.query(CareEvent).filter_by(patient_id="p_arjun", status="NO_RESPONSE")
+              .order_by(CareEvent.scheduled_at).all())
+    assert items("p_rajesh", "NEEDS_REVIEW") == [
+        ("NEEDS_REVIEW", [attention.missed_reason(missed), attention.report_reason("CBC — 20 Sep")], "PENDING")]
+    assert items("p_arjun", "FOLLOW_UP") == [("FOLLOW_UP", [attention.streak_reason(streak)], "PENDING")]
+    assert re.fullmatch(r"Medication reported missed: Capecitabine 500mg, \d\d [A-Z][a-z]{2}", attention.missed_reason(missed))
+    assert re.fullmatch(r"3 consecutive daily check-ins unanswered: (\d\d [A-Z][a-z]{2}, ){2}\d\d [A-Z][a-z]{2}",
+                        attention.streak_reason(streak))
+
+    rajesh = db.get(Patient, "p_rajesh")
+    attention.clear_reason(db, rajesh, "NEEDS_REVIEW", attention.missed_reason(missed), DOCTOR_ACTOR)   # exact text
+    db.commit()
+    assert items("p_rajesh", "NEEDS_REVIEW")[0][1] == [attention.report_reason("CBC — 20 Sep")]
 
 
 # ---------- Meera: PALLIATIVE ----------
@@ -149,7 +169,7 @@ def test_resolving_meeras_query_closes_her_item(db):
 # ---------- Vikram: TRANSFER_OF_CARE ----------
 
 def test_vikram_checklist_paused_despite_events_today(db):
-    today = datetime.utcnow().date()
+    today = utcnow().date()
     assert any(e.scheduled_at.date() == today for e in db.query(CareEvent).filter_by(patient_id="p_vikram"))
     out = checklist("p_vikram")
     assert out["items"] == [] and out["paused"] is True and out["reason"] == "Journey state TRANSFER_OF_CARE"
@@ -187,7 +207,7 @@ def test_farhan_has_two_chapters_split_at_the_relapse(db):
 
 def test_farhan_new_care_plan_lands_in_chapter_2(db):
     d = CarePlanDraft(patient_id="p_farhan", raw_text="x", created_by="doc_mehta", items=[
-        {"type": "MEDICATION", "title": "Prednisolone 20mg", "start_date": datetime.utcnow().date().isoformat(),
+        {"type": "MEDICATION", "title": "Prednisolone 20mg", "start_date": utcnow().date().isoformat(),
          "end_date": None, "recurrence": None}])
     db.add(d)
     db.commit()

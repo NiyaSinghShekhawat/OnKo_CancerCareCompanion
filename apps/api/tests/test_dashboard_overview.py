@@ -1,6 +1,6 @@
 """GET /dashboard/overview (owner: Samprada).
 DB is test_onko.db (set in conftest.py), reseeded before every test — never onko.db."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from core import seed
 from core.db import SessionLocal
 from core.models import CareEvent
+from core.timeutil import utcnow
 from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
@@ -19,7 +20,7 @@ def fresh_db():
 
 
 def today_at(h, m=0, days=0):
-    start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    start = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     return start + timedelta(days=days, hours=h, minutes=m)
 
 

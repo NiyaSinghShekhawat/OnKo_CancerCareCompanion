@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy import String, Integer, DateTime, JSON, Boolean, Text, ForeignKey, event, select
 from sqlalchemy.orm import Mapped, mapped_column
 from core.db import Base
+from core.timeutil import utcnow
 
 
 def _id() -> str:
@@ -36,7 +37,7 @@ class Patient(Base):
     journey_chapter: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     doctor_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class CarePlanItem(Base):
@@ -50,7 +51,7 @@ class CarePlanItem(Base):
     end_date: Mapped[str | None] = mapped_column(String, nullable=True)
     recurrence: Mapped[str | None] = mapped_column(String, nullable=True)
     approved_by: Mapped[str] = mapped_column(String)
-    approved_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    approved_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class CarePlanDraft(Base):
@@ -61,7 +62,7 @@ class CarePlanDraft(Base):
     items: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String, default="DRAFT")
     created_by: Mapped[str] = mapped_column(String)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class CareEvent(Base):
@@ -98,7 +99,7 @@ class AttentionItem(Base):
     reasons: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String, default="PENDING")
     assigned_to: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class PatientQuery(Base):
@@ -112,7 +113,7 @@ class PatientQuery(Base):
     route_to: Mapped[str] = mapped_column(String, default="admin_queue")
     status: Mapped[str] = mapped_column(String, default="OPEN")
     response: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class Report(Base):
@@ -123,7 +124,7 @@ class Report(Base):
     text: Mapped[str] = mapped_column(Text)
     extracted_values: Mapped[list] = mapped_column(JSON, default=list)
     uploaded_by_role: Mapped[str] = mapped_column(String)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     reviewed: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
@@ -150,4 +151,4 @@ class AuditLog(Base):
     entity_id: Mapped[str] = mapped_column(String)
     before: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     after: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

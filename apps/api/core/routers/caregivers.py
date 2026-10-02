@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
@@ -6,6 +6,7 @@ from core.auth import get_actor, require, require_patient_access
 from core.models import Caregiver, CareEvent, Patient
 from core.serialize import minimized_event, to_dict
 from core.services import audit, journey_state, review
+from core.timeutil import utcnow
 
 router = APIRouter(tags=["caregivers"])
 
@@ -130,7 +131,7 @@ def caregiver_view(cid: str, db=Depends(get_db), actor=Depends(get_actor)):
         raise HTTPException(403, "Caregiver access not granted")
 
     p = db.get(Patient, cg.patient_id)
-    now = datetime.utcnow()
+    now = utcnow()
     window = timedelta(days=VIEW_DAYS)
     events = (db.query(CareEvent)
               .filter(CareEvent.patient_id == p.id,
