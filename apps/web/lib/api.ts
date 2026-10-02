@@ -56,8 +56,12 @@ export const api = {
 
   setEventStatus: (id: string, status: EventStatus) =>
     USE_MOCKS ? mock<CareEvent>({}) : req<CareEvent>(`/events/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
-  updateAttention: (id: string, status: string) =>
-    USE_MOCKS ? mock<AttentionItem>({}) : req<AttentionItem>(`/attention/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  updateAttention: (id: string, status: string, assigned_to?: string | null) =>
+    USE_MOCKS ? mock<AttentionItem>({ id, status, assigned_to } as AttentionItem)
+      : req<AttentionItem>(`/attention/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify(assigned_to === undefined ? { status } : { status, assigned_to }),
+        }),
   sendQuery: (patient_id: string, text: string) =>
     USE_MOCKS ? mock<PatientQuery>({}) : req<PatientQuery>("/queries", { method: "POST", body: JSON.stringify({ patient_id, text, channel: "app" }) }),
   updateQuery: (id: string, status: string, response?: string) =>
