@@ -309,6 +309,8 @@ Revoking takes effect immediately: every caregiver check and SOS notification lo
 
 Every audit entry has `actor_id`, `actor_role`, `action`, `entity_type`, `entity_id`, `before`, `after`, `timestamp`. Read them with `GET /audit?entity_id=` (staff only; newest 200).
 
+`actor_role` is one of the four roles, or **`system`** (with `actor_id` `whatsapp`) for automated actions written by `whatsapp/`. That's always the case for `caregivers_notified`, and for `whatsapp_checklist_sent` when the daily scheduler or the cron secret sent the checklist; when a doctor or nurse calls `send-checklist`, the entry records that person. The contract (`AuditLog` in `contracts/schemas.json`) lists it as `Role|system`, so the web app should expect it when showing audit history.
+
 | Action | Entity | Written when |
 |---|---|---|
 | `journey_state_change` | patient | Doctor sets a journey state |
@@ -335,7 +337,7 @@ Every audit entry has `actor_id`, `actor_role`, `action`, `entity_type`, `entity
 | `caregiver_reinvited` | caregiver | REVOKED → PENDING |
 | `caregiver_view_accessed` | caregiver | Caregiver view opened |
 | `caregivers_notified` | patient | SOS alert sent to caregivers (`after.names`, `after.channel`); written by `whatsapp/` with actor role `system`; also drives the 60-second de-dupe |
-| `whatsapp_checklist_sent` | patient | WhatsApp checklist sent (`after.event_ids` = the numbered order the patient saw, used to match "1 done, 3 missed" replies for 24h); written by `whatsapp/` |
+| `whatsapp_checklist_sent` | patient | WhatsApp checklist sent (`after.event_ids` = the numbered order the patient saw, used to match "1 done, 3 missed" replies for 24h); written by `whatsapp/`; actor role `system` when sent by the scheduler or cron secret, otherwise the staff member who sent it |
 
 ---
 
