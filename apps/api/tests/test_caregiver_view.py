@@ -1,7 +1,7 @@
 """GET /caregivers/{id}/view — caregiver-scoped view with data minimization (owner: Samprada).
 DB is test_onko.db (set in conftest.py), reseeded before every test — never onko.db."""
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from core import seed
 from core.db import SessionLocal
 from core.models import AuditLog, CareEvent, Caregiver
+from core.timeutil import utcnow
 from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
@@ -38,7 +39,7 @@ def view(cid, headers=None):
 
 def add_event(db, pid, title, hours_from_now, status):
     db.add(CareEvent(patient_id=pid, type="MEDICATION", title=title, details={"dose": "SECRET-DOSE"},
-                     scheduled_at=datetime.utcnow() + timedelta(hours=hours_from_now), status=status))
+                     scheduled_at=utcnow() + timedelta(hours=hours_from_now), status=status))
     db.commit()
 
 

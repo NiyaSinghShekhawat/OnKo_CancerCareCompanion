@@ -5,6 +5,7 @@ Every item carries plain factual reasons. See docs/core.md for the rule table.
 from datetime import datetime
 from core.models import AttentionItem, CareEvent, Patient, PatientQuery, Report
 from core.services import audit, journey_state
+from core.timeutil import utcnow
 
 NO_RESPONSE_STREAK = 3
 QUERY_OPEN_HOURS = 24
@@ -140,7 +141,7 @@ def _unanswered_streak(db, patient: Patient) -> list[CareEvent]:
 
 def recompute_for_patient(db, patient: Patient, now: datetime | None = None):
     """Scan events/queries/reports and call raise_item per rule in docs/core.md."""
-    now = now or datetime.utcnow()
+    now = now or utcnow()
     db.flush()
     if not journey_state.attention_allowed(patient.journey_state):
         return

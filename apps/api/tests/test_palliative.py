@@ -1,6 +1,6 @@
 """PALLIATIVE suppresses adherence-style attention (owner: Samprada).
 DB is test_onko.db (set in conftest.py), reseeded before every test — never onko.db."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +9,7 @@ from core import seed
 from core.db import SessionLocal
 from core.models import AttentionItem, AuditLog, CareEvent, PatientQuery, Report
 from core.services import attention
+from core.timeutil import utcnow
 from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
@@ -113,7 +114,7 @@ def test_advance_day_does_not_re_raise_follow_up():
 def test_queries_still_raise(db):
     set_state("p_rajesh", "PALLIATIVE")
     q = db.query(PatientQuery).filter_by(patient_id="p_rajesh").one()
-    q.created_at = datetime.utcnow() - timedelta(hours=30)
+    q.created_at = utcnow() - timedelta(hours=30)
     db.commit()
     c.post("/demo/advance-day")
     assert any(r.startswith("Query unresolved for 30h:") for r in reasons("p_rajesh", "QUERY"))

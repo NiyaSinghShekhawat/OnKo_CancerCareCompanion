@@ -9,6 +9,7 @@ from core import seed
 from core.db import SessionLocal
 from core.models import AttentionItem, AuditLog, CareEvent, Patient, PatientQuery
 from core.services import attention, journey_state
+from core.timeutil import utcnow
 from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
@@ -45,7 +46,7 @@ def checklist(pid):
 def add_stale_event(db, pid) -> str:
     """An unanswered check-in whose 24h window has already passed."""
     e = CareEvent(patient_id=pid, type="MEDICATION", title="Stale check-in",
-                  scheduled_at=datetime.utcnow() - timedelta(hours=30), status="UPCOMING")
+                  scheduled_at=utcnow() - timedelta(hours=30), status="UPCOMING")
     db.add(e)
     db.commit()
     return e.id
@@ -60,7 +61,7 @@ def status_of(eid):
 
 def age_seeded_query(db, hours=30):
     q = db.query(PatientQuery).filter_by(patient_id="p_rajesh").one()
-    q.created_at = datetime.utcnow() - timedelta(hours=hours)
+    q.created_at = utcnow() - timedelta(hours=hours)
     db.commit()
 
 
@@ -199,13 +200,13 @@ def test_active_checklist_is_not_paused():
 # ---------- journey_state_changed_at ----------
 
 def set_changed_at(db, pid, hours_ago):
-    db.get(Patient, pid).journey_state_changed_at = datetime.utcnow() - timedelta(hours=hours_ago)
+    db.get(Patient, pid).journey_state_changed_at = utcnow() - timedelta(hours=hours_ago)
     db.commit()
 
 
 def add_event_at(db, pid, hours_ago) -> str:
     e = CareEvent(patient_id=pid, type="MEDICATION", title=f"Check-in {hours_ago}h ago",
-                  scheduled_at=datetime.utcnow() - timedelta(hours=hours_ago), status="UPCOMING")
+                  scheduled_at=utcnow() - timedelta(hours=hours_ago), status="UPCOMING")
     db.add(e)
     db.commit()
     return e.id
@@ -231,9 +232,9 @@ def test_changing_state_sets_changed_at_and_previous_state_and_same_state_does_n
     set_state("p_rajesh", "ACTIVE_TREATMENT")                  # already ACTIVE_TREATMENT: not a change
     assert changed_at("p_rajesh") == seeded
     assert c.get("/patients/p_rajesh").json()["previous_journey_state"] is None
-    t0 = datetime.utcnow()
+    t0 = utcnow()
     set_state("p_rajesh", "RELAPSE")
-    assert t0 <= changed_at("p_rajesh") <= datetime.utcnow()
+    assert t0 <= changed_at("p_rajesh") <= utcnow()
     assert c.get("/patients/p_rajesh").json()["previous_journey_state"] == "ACTIVE_TREATMENT"
     set_state("p_rajesh", "TRANSFER_OF_CARE")
     set_state("p_rajesh", "RELAPSE")

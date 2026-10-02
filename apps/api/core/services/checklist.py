@@ -3,10 +3,11 @@ from datetime import datetime, timedelta
 from sqlalchemy import or_
 from core.models import CareEvent, Patient
 from core.services import journey_state
+from core.timeutil import utcnow
 
 
 def todays_items(db, patient_id: str, day: datetime | None = None):
-    day = day or datetime.utcnow()
+    day = day or utcnow()
     start = day.replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + timedelta(days=1)
     return (db.query(CareEvent)

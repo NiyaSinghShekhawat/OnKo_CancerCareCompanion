@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
@@ -6,6 +6,7 @@ from core.auth import STAFF, get_actor, require
 from core.models import AttentionItem, Patient, PatientQuery, Report, CareEvent, User
 from core.serialize import to_dict
 from core.services import audit
+from core.timeutil import utcnow
 
 router = APIRouter(tags=["attention"])
 ORDER = {"SOS": 0, "NEEDS_REVIEW": 1, "QUERY": 2, "FOLLOW_UP": 3}
@@ -85,7 +86,7 @@ def update_attention(aid: str, body: AttentionUpdate, db=Depends(get_db), actor=
 def overview(db=Depends(get_db), actor=Depends(get_actor)):
     require(actor, *STAFF)
     # "Today" = the UTC calendar day, same as services/checklist.py todays_items
-    start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    start = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + timedelta(days=1)
     return {
         "active_patients": db.query(Patient).filter(Patient.journey_state != "DECEASED").count(),

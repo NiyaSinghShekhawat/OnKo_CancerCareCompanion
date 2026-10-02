@@ -1,7 +1,6 @@
 """Seed has one patient per journey state, and each behaves as the state rules say (owner: Samprada).
 DB is test_onko.db (set in conftest.py), reseeded before every test — never onko.db."""
 import re
-from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +9,7 @@ from core import seed
 from core.db import SessionLocal
 from core.models import AttentionItem, CarePlanDraft, CareEvent, Caregiver, Patient, PatientQuery
 from core.services import attention
+from core.timeutil import utcnow
 from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
@@ -78,7 +78,7 @@ def test_new_patients_have_complete_consistent_profiles(db):
         assert p.age and p.gender in {"M", "F"}
         assert re.fullmatch(r"whatsapp:\+9100000000\d\d", p.phone_whatsapp)
         assert p.previous_journey_state and p.previous_journey_state != state
-        assert p.journey_state_changed_at < datetime.utcnow()
+        assert p.journey_state_changed_at < utcnow()
         (cg,) = db.query(Caregiver).filter_by(patient_id=pid).all()
         assert cg.consent_status == "GRANTED" and cg.type == "family"
         assert re.fullmatch(r"whatsapp:\+9100000000\d\d", cg.phone_whatsapp)
@@ -149,7 +149,7 @@ def test_resolving_meeras_query_closes_her_item(db):
 # ---------- Vikram: TRANSFER_OF_CARE ----------
 
 def test_vikram_checklist_paused_despite_events_today(db):
-    today = datetime.utcnow().date()
+    today = utcnow().date()
     assert any(e.scheduled_at.date() == today for e in db.query(CareEvent).filter_by(patient_id="p_vikram"))
     out = checklist("p_vikram")
     assert out["items"] == [] and out["paused"] is True and out["reason"] == "Journey state TRANSFER_OF_CARE"
@@ -187,7 +187,7 @@ def test_farhan_has_two_chapters_split_at_the_relapse(db):
 
 def test_farhan_new_care_plan_lands_in_chapter_2(db):
     d = CarePlanDraft(patient_id="p_farhan", raw_text="x", created_by="doc_mehta", items=[
-        {"type": "MEDICATION", "title": "Prednisolone 20mg", "start_date": datetime.utcnow().date().isoformat(),
+        {"type": "MEDICATION", "title": "Prednisolone 20mg", "start_date": utcnow().date().isoformat(),
          "end_date": None, "recurrence": None}])
     db.add(d)
     db.commit()

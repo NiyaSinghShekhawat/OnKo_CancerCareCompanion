@@ -1,12 +1,13 @@
 """Demo data. Run: python -m core.seed   (wipes and reloads the DB)
 The running app resets through POST /demo/reset, which calls run(db) with its own session."""
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 
 from core.db import Base, engine, SessionLocal
 from core import models as m
+from core.timeutil import utcnow
 
 
 def run(db=None):
@@ -32,7 +33,7 @@ def run(db=None):
 
 def _load(db):
     # Dates are relative to the moment of seeding, so a reset hours later still looks like "today".
-    now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    now = utcnow().replace(minute=0, second=0, microsecond=0)
     d = lambda days, h=9: (now + timedelta(days=days)).replace(hour=h)
 
     db.add_all([
