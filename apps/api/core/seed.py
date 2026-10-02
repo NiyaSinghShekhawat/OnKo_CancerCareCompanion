@@ -105,7 +105,7 @@ def _load(db):
         m.AttentionItem(patient_id="p_rajesh", patient_name="Rajesh Kumar", label="QUERY",
                         reasons=["New patient concern logged: Patient reports nausea since yesterday and mild discomfort."]),
         m.AttentionItem(patient_id="p_arjun", patient_name="Arjun Reddy", label="FOLLOW_UP",
-                        reasons=["3 consecutive daily check-ins unanswered"]),
+                        reasons=["3 consecutive daily check-ins unanswered"], assigned_to="nurse_anita"),
     ])
     db.flush()
 

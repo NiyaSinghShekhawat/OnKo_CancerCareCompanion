@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
 from core.auth import STAFF, get_actor, require
-from core.models import AttentionItem, Patient, PatientQuery, Report, CareEvent
+from core.models import AttentionItem, Patient, PatientQuery, Report, CareEvent, User
 from core.serialize import to_dict
 from core.services import audit
 
@@ -11,17 +11,47 @@ router = APIRouter(tags=["attention"])
 ORDER = {"SOS": 0, "NEEDS_REVIEW": 1, "QUERY": 2, "FOLLOW_UP": 3}
 
 
-@router.get("/attention")
-def list_attention(db=Depends(get_db), actor=Depends(get_actor)):
-    require(actor, *STAFF)
-    items = db.query(AttentionItem).filter(AttentionItem.status != "CLOSED").all()
+LABELS = set(ORDER)
+STATUSES = {"PENDING", "ACKNOWLEDGED", "HANDLED", "CLOSED"}
+
+
+def _queue(query) -> list[dict]:
+    items = query.all()
     items.sort(key=lambda i: (ORDER.get(i.label, 9), i.created_at))
     return [to_dict(i) for i in items]
 
 
+@router.get("/attention")
+def list_attention(assigned_to: str | None = None, label: str | None = None, patient_id: str | None = None,
+                   status: str | None = None, db=Depends(get_db), actor=Depends(get_actor)):
+    """Filters combine. Without ?status=, CLOSED items are left out; ?status=CLOSED shows them."""
+    require(actor, *STAFF)
+    if label is not None and label not in LABELS:
+        raise HTTPException(400, f"Unknown label; use one of {sorted(LABELS)}")
+    if status is not None and status not in STATUSES:
+        raise HTTPException(400, f"Unknown status; use one of {sorted(STATUSES)}")
+    q = db.query(AttentionItem)
+    q = q.filter(AttentionItem.status == status) if status else q.filter(AttentionItem.status != "CLOSED")
+    if assigned_to is not None:
+        q = q.filter(AttentionItem.assigned_to == assigned_to)
+    if label is not None:
+        q = q.filter(AttentionItem.label == label)
+    if patient_id is not None:
+        q = q.filter(AttentionItem.patient_id == patient_id)
+    return _queue(q)
+
+
+@router.get("/attention/mine")
+def my_attention(db=Depends(get_db), actor=Depends(get_actor)):
+    """Open items assigned to the caller (CLOSED left out, like the main queue)."""
+    require(actor, *STAFF)
+    return _queue(db.query(AttentionItem).filter(AttentionItem.assigned_to == actor.user_id,
+                                                 AttentionItem.status != "CLOSED"))
+
+
 class AttentionUpdate(BaseModel):
-    status: str
-    assigned_to: str | None = None
+    status: str | None = None        # omit to only assign / hand off
+    assigned_to: str | None = None   # a doctor or care_team user id
 
 
 @router.patch("/attention/{aid}")
@@ -30,11 +60,23 @@ def update_attention(aid: str, body: AttentionUpdate, db=Depends(get_db), actor=
     a = db.get(AttentionItem, aid)
     if not a:
         raise HTTPException(404, "Not found")
-    before = {"status": a.status, "assigned_to": a.assigned_to}
-    a.status = body.status
+    if actor.role == "care_team" and a.assigned_to not in (None, actor.user_id):
+        # Checked against the current assignee, so a nurse can't take someone else's item and then close it.
+        raise HTTPException(403, "This item is assigned to someone else")
     if body.assigned_to is not None:
+        assignee = db.get(User, body.assigned_to)
+        if not assignee or assignee.role not in STAFF:
+            raise HTTPException(400, "assigned_to must be a doctor or care_team user id")
+
+    if body.status is not None and body.status != a.status:
+        before = a.status
+        a.status = body.status
+        audit.log(db, actor, "attention_update", "attention_item", a.id, {"status": before}, {"status": a.status})
+    if body.assigned_to is not None and body.assigned_to != a.assigned_to:
+        before = a.assigned_to
         a.assigned_to = body.assigned_to
-    audit.log(db, actor, "attention_update", "attention_item", a.id, before, body.model_dump())
+        audit.log(db, actor, "attention_handoff" if before else "attention_assigned", "attention_item", a.id,
+                  {"assigned_to": before}, {"assigned_to": a.assigned_to})
     db.commit()
     return to_dict(a)
 
