@@ -27,8 +27,13 @@ export default function CaregiverLifecycle({
         action === "accept"
           ? await api.acceptCaregiver(caregiver.id)
           : action === "revoke"
-            ? await api.revokeCaregiver(caregiver.id)
-            : await api.reinviteCaregiver(caregiver.id);
+            ? await api.revokeCaregiver(
+                caregiver.id,
+                mode === "caregiver"
+                  ? { role: "caregiver", userId: caregiver.id }
+                  : { role: "patient", userId: caregiver.patient_id },
+              )
+            : await api.reinviteCaregiver(caregiver.id, { role: "patient", userId: caregiver.patient_id });
       setState(updated.consent_status);
       setMessage(
         updated.consent_status === "GRANTED"
@@ -49,7 +54,11 @@ export default function CaregiverLifecycle({
     setError("");
     setMessage("");
     try {
-      const updated = await api.updateCaregiverPermissions(caregiver.id, perms);
+      const updated = await api.updateCaregiverPermissions(
+        caregiver.id,
+        perms,
+        { role: "patient", userId: caregiver.patient_id },
+      );
       setPerms(updated.permissions);
       setMessage("Caregiver permissions updated.");
     } catch (err) {
