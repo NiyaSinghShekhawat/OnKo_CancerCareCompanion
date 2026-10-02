@@ -114,7 +114,7 @@ def test_accept_unknown_caregiver_404():
 # ---------- revoke ----------
 
 @pytest.mark.parametrize("who, allowed", [("rajesh", True), ("doctor", True), ("care_team", True),
-                                          ("another patient", False), ("the caregiver", False),
+                                          ("another patient", False), ("the caregiver", True),
                                           ("another caregiver", False)])
 def test_who_can_revoke(who, allowed):
     sunita = cg_id("Sunita Kumar")
@@ -123,6 +123,26 @@ def test_who_can_revoke(who, allowed):
                "another caregiver": as_cg(cg_id("Ayesha Ali"))}[who]
     assert post(sunita, "revoke", headers).status_code == (200 if allowed else 403)
     assert status_of(sunita) == ("REVOKED" if allowed else "GRANTED")
+
+
+def test_caregiver_can_step_away_with_audit():
+    sunita = cg_id("Sunita Kumar")
+    r = post(sunita, "revoke", as_cg(sunita))
+    assert r.status_code == 200 and r.json()["consent_status"] == "REVOKED"
+    assert consent_audit(sunita) == [("caregiver_consent_revoked", sunita,
+                                      {"consent_status": "GRANTED"}, {"consent_status": "REVOKED"})]
+    assert c.get(f"/caregivers/{sunita}/view", headers=as_cg(sunita)).status_code == 403
+    r = post(sunita, "accept", as_cg(sunita))                 # coming back needs the patient's re-invite
+    assert r.status_code == 409
+
+
+def test_caregiver_cannot_revoke_a_fellow_caregiver():
+    sunita = cg_id("Sunita Kumar")
+    ravi = c.post("/patients/p_rajesh/caregivers", headers=patient("p_rajesh"),
+                  json={"name": "Ravi Kumar", "relation": "Son", "phone_whatsapp": "whatsapp:+910000000099"}).json()["id"]
+    post(ravi, "accept", as_cg(ravi))
+    assert post(sunita, "revoke", as_cg(ravi)).status_code == 403   # same patient, GRANTED, still not allowed
+    assert status_of(sunita) == "GRANTED"
 
 
 def test_revoke_from_pending_and_revoke_twice():

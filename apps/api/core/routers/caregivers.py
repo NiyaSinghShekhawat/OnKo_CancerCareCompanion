@@ -88,11 +88,13 @@ def accept_consent(cid: str, db=Depends(get_db), actor=Depends(get_actor)):
 
 @router.post("/caregivers/{cid}/revoke")
 def revoke_consent(cid: str, db=Depends(get_db), actor=Depends(get_actor)):
-    """The patient (own caregivers) or doctor / care_team. Any state → REVOKED; takes effect immediately,
-    since every caregiver check and notify_caregivers look for GRANTED at the time of the call.
-    No attention reasons or stored notifications are tied to a caregiver, so there is nothing else to clean up."""
+    """The patient (own caregivers), doctor / care_team, or the caregiver themself (stepping away).
+    Any state → REVOKED; takes effect immediately, since every caregiver check and notify_caregivers look for
+    GRANTED at the time of the call. No attention reasons or stored notifications are tied to a caregiver,
+    so there is nothing else to clean up."""
     cg = _get_cg(db, cid)
-    require_patient_access(actor, cg.patient_id, db, allow_caregivers=False)
+    if not (actor.role == "caregiver" and actor.user_id == cid):
+        require_patient_access(actor, cg.patient_id, db, allow_caregivers=False)
     if cg.consent_status == "REVOKED":
         return to_dict(cg)
     return _move_consent(db, actor, cg, "REVOKED", "caregiver_consent_revoked")
