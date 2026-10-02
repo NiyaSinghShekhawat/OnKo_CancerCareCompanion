@@ -92,5 +92,5 @@ def approve_draft(draft_id: str, db=Depends(get_db), actor=Depends(get_actor)):
 
 @router.get("/patients/{pid}/careplan")
 def get_careplan(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
-    require_patient_access(actor, pid, db)
+    require_patient_access(actor, pid, db, allow_caregivers=False)
     return [to_dict(x) for x in db.query(CarePlanItem).filter_by(patient_id=pid)]

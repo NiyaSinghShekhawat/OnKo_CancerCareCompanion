@@ -88,37 +88,44 @@ def test_advance_day_is_doctor_only():
 
 # ---------- per-patient reads ----------
 
-@pytest.mark.parametrize("path", ["/patients/p_rajesh", "/patients/p_rajesh/timeline", "/patients/p_rajesh/careplan",
-                                  "/patients/p_rajesh/checklist/today", "/patients/p_rajesh/reports",
-                                  "/patients/p_rajesh/caregivers"])
+STAFF_AND_SELF = {"doctor", "care_team", "rajesh himself"}
+NO_CAREGIVER_READS = ["/patients/p_rajesh", "/patients/p_rajesh/timeline", "/patients/p_rajesh/careplan",
+                      "/patients/p_rajesh/reports", "/patients/p_rajesh/caregivers", "/patients/p_rajesh/360"]
+
+
+@pytest.mark.parametrize("path", NO_CAREGIVER_READS)
 @pytest.mark.parametrize("who", list(WHO))
-def test_per_patient_reads(path, who):
-    assert c.get(path, headers=WHO[who]()).status_code == (200 if who in ALLOWED else 403)
+def test_per_patient_reads_exclude_caregivers(path, who):
+    assert c.get(path, headers=WHO[who]()).status_code == (200 if who in STAFF_AND_SELF else 403)
 
 
 @pytest.mark.parametrize("who", list(WHO))
-def test_360_excludes_caregivers(who):
-    expected = 200 if who in {"doctor", "care_team", "rajesh himself"} else 403
-    assert c.get("/patients/p_rajesh/360", headers=WHO[who]()).status_code == expected
+def test_checklist_today_includes_consented_caregiver(who):
+    assert c.get("/patients/p_rajesh/checklist/today", headers=WHO[who]()).status_code == (200 if who in ALLOWED else 403)
 
 
-def test_caregiver_uses_their_own_view_instead_of_360():
+def test_caregiver_reads_go_through_their_own_minimized_view():
     sunita = caregiver("Sunita Kumar")
-    assert c.get("/patients/p_rajesh/360", headers=sunita).status_code == 403
-    assert c.get(f"/caregivers/{sunita['X-User-Id']}/view", headers=sunita).status_code == 200
+    for path in NO_CAREGIVER_READS:
+        assert c.get(path, headers=sunita).status_code == 403, path
+    view = c.get(f"/caregivers/{sunita['X-User-Id']}/view", headers=sunita)
+    assert view.status_code == 200 and view.json()["patient"]["id"] == "p_rajesh"
 
 
 def test_pending_caregiver_has_no_access():
     karthik = caregiver("Karthik Sundaram")
-    assert c.get("/patients/p_priya", headers=karthik).status_code == 403
+    assert c.get("/patients/p_priya/checklist/today", headers=karthik).status_code == 403
     assert c.post("/sos", json={"patient_id": "p_priya", "channel": "app"}, headers=karthik).status_code == 403
 
 
 def test_revoking_consent_removes_access_immediately():
     sunita = caregiver("Sunita Kumar")
-    assert c.get("/patients/p_rajesh/timeline", headers=sunita).status_code == 200
-    c.patch(f"/caregivers/{sunita['X-User-Id']}", json={"consent_status": "REVOKED"}, headers=patient("p_rajesh"))
-    assert c.get("/patients/p_rajesh/timeline", headers=sunita).status_code == 403
+    cid = sunita["X-User-Id"]
+    assert c.get("/patients/p_rajesh/checklist/today", headers=sunita).status_code == 200
+    assert c.get(f"/caregivers/{cid}/view", headers=sunita).status_code == 200
+    c.patch(f"/caregivers/{cid}", json={"consent_status": "REVOKED"}, headers=patient("p_rajesh"))
+    assert c.get("/patients/p_rajesh/checklist/today", headers=sunita).status_code == 403
+    assert c.get(f"/caregivers/{cid}/view", headers=sunita).status_code == 403
 
 
 def test_unknown_patient_is_404_for_staff_and_403_for_others():
@@ -156,6 +163,14 @@ def test_upload_report(who):
     r = c.post("/patients/p_rajesh/reports", json={"title": "LFT", "text": "ALT 30", "uploaded_by_role": "patient"},
                headers=WHO[who]())
     assert r.status_code == (200 if who in ALLOWED else 403)
+
+
+def test_caregiver_can_upload_but_not_read_reports():
+    sunita = caregiver("Sunita Kumar")
+    r = c.post("/patients/p_rajesh/reports", json={"title": "LFT", "text": "ALT 30", "uploaded_by_role": "caregiver"},
+               headers=sunita)
+    assert r.status_code == 200
+    assert c.get("/patients/p_rajesh/reports", headers=sunita).status_code == 403
 
 
 def test_caregiver_without_upload_permission_still_refused():

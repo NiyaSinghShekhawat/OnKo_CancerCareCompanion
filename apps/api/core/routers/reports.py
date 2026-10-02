@@ -39,7 +39,7 @@ def upload(pid: str, body: ReportIn, db=Depends(get_db), actor=Depends(get_actor
 
 @router.get("/patients/{pid}/reports")
 def list_reports(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
-    require_patient_access(actor, pid, db)
+    require_patient_access(actor, pid, db, allow_caregivers=False)   # caregivers may upload, not read
     return [to_dict(r) for r in db.query(Report).filter_by(patient_id=pid)]
 
 

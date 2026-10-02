@@ -19,7 +19,7 @@ class CaregiverIn(BaseModel):
 
 @router.get("/patients/{pid}/caregivers")
 def list_cg(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
-    require_patient_access(actor, pid, db)
+    require_patient_access(actor, pid, db, allow_caregivers=False)   # other caregivers' numbers stay private
     return [to_dict(c) for c in db.query(Caregiver).filter_by(patient_id=pid)]
 
 

@@ -24,7 +24,7 @@ def list_patients(q: str | None = None, status: str | None = None, db=Depends(ge
 
 @router.get("/patients/{pid}")
 def get_patient(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
-    require_patient_access(actor, pid, db)
+    require_patient_access(actor, pid, db, allow_caregivers=False)   # caregivers: /caregivers/{id}/view
     p = db.get(Patient, pid)
     if not p:
         raise HTTPException(404, "Patient not found")
@@ -33,7 +33,7 @@ def get_patient(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
 
 @router.get("/patients/{pid}/timeline")
 def timeline(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
-    require_patient_access(actor, pid, db)
+    require_patient_access(actor, pid, db, allow_caregivers=False)
     events = db.query(CareEvent).filter_by(patient_id=pid).order_by(CareEvent.scheduled_at).all()
     return [to_dict(e) for e in events]
 
