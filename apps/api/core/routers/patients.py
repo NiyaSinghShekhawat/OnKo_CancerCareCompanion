@@ -70,8 +70,9 @@ def patient_360(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
         "query_history": [to_dict(x) for x in reversed(queries)],
         "reports": [to_dict(x) for x in reports],
         "caregivers": [to_dict(x) for x in db.query(Caregiver).filter_by(patient_id=pid)],
-        "attention": [to_dict(x) for x in attention_items if x.status in {"PENDING", "ACKNOWLEDGED"}],
-        "attention_history": [to_dict(x) for x in attention_items],
+        # Attention is an internal care-team workflow; do not expose these operational flags to patients.
+        "attention": [to_dict(x) for x in attention_items if x.status in {"PENDING", "ACKNOWLEDGED"}] if actor.role in STAFF else [],
+        "attention_history": [to_dict(x) for x in attention_items] if actor.role in STAFF else [],
         "since_last_review": summary,
     }
 
