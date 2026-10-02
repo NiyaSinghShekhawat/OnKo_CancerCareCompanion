@@ -7,7 +7,7 @@ from main import app
 from whatsapp import messages, webhook
 from whatsapp.parser import intent, parse_all, parse_checklist_reply
 
-c = TestClient(app)
+c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
 
 
 @pytest.fixture(autouse=True)

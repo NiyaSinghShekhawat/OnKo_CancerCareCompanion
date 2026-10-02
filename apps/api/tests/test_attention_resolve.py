@@ -12,7 +12,7 @@ from core.models import AttentionItem, AuditLog, Patient, PatientQuery, Report
 from core.services import attention
 from main import app
 
-c = TestClient(app)
+c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
 NURSE = {"X-Role": "care_team", "X-User-Id": "nurse_anita"}
 DOCTOR = Actor("doctor", "doc_mehta")
 

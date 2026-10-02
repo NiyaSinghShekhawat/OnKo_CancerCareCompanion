@@ -11,7 +11,7 @@ from core.models import AttentionItem, AuditLog, CareEvent, PatientQuery, Report
 from core.services import attention
 from main import app
 
-c = TestClient(app)
+c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
 DOCTOR = {"X-Role": "doctor", "X-User-Id": "doc_mehta"}
 MISSED = "Medication reported missed: Capecitabine evening dose"
 CBC = attention.report_reason("CBC — 20 Sep")

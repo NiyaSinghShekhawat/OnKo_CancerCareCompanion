@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor, require
+from core.auth import get_actor, require, require_patient_access
 from core.models import Patient, CarePlanDraft, CarePlanItem, CareEvent
 from core.serialize import to_dict
 from core.services import audit, recurrence
@@ -91,5 +91,6 @@ def approve_draft(draft_id: str, db=Depends(get_db), actor=Depends(get_actor)):
 
 
 @router.get("/patients/{pid}/careplan")
-def get_careplan(pid: str, db=Depends(get_db)):
+def get_careplan(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, pid, db, allow_caregivers=False)
     return [to_dict(x) for x in db.query(CarePlanItem).filter_by(patient_id=pid)]

@@ -9,7 +9,7 @@ from core.models import AttentionItem, AuditLog, Report
 from core.services import attention
 from main import app
 
-c = TestClient(app)
+c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
 DOCTOR = {"X-Role": "doctor", "X-User-Id": "doc_mehta"}
 NURSE = {"X-Role": "care_team", "X-User-Id": "nurse_anita"}
 MISSED = "Medication reported missed: Capecitabine evening dose"

@@ -2,7 +2,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor, require
+from core.auth import STAFF, get_actor, require, require_patient_access
 from core.models import Patient, CareEvent, CarePlanItem, PatientQuery, Report, Caregiver, AttentionItem
 from core.serialize import to_dict
 from core.services import attention, audit, journey_state, review
@@ -12,7 +12,8 @@ router = APIRouter(tags=["patients"])
 
 
 @router.get("/patients")
-def list_patients(q: str | None = None, status: str | None = None, db=Depends(get_db)):
+def list_patients(q: str | None = None, status: str | None = None, db=Depends(get_db), actor=Depends(get_actor)):
+    require(actor, *STAFF)
     query = db.query(Patient)
     if q:
         query = query.filter(Patient.name.ilike(f"%{q}%"))
@@ -22,7 +23,8 @@ def list_patients(q: str | None = None, status: str | None = None, db=Depends(ge
 
 
 @router.get("/patients/{pid}")
-def get_patient(pid: str, db=Depends(get_db)):
+def get_patient(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, pid, db, allow_caregivers=False)   # caregivers: /caregivers/{id}/view
     p = db.get(Patient, pid)
     if not p:
         raise HTTPException(404, "Patient not found")
@@ -30,13 +32,16 @@ def get_patient(pid: str, db=Depends(get_db)):
 
 
 @router.get("/patients/{pid}/timeline")
-def timeline(pid: str, db=Depends(get_db)):
+def timeline(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, pid, db, allow_caregivers=False)
     events = db.query(CareEvent).filter_by(patient_id=pid).order_by(CareEvent.scheduled_at).all()
     return [to_dict(e) for e in events]
 
 
 @router.get("/patients/{pid}/360")
-def patient_360(pid: str, db=Depends(get_db)):
+def patient_360(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    # Caregivers use their own minimized /caregivers/{id}/view instead.
+    require_patient_access(actor, pid, db, allow_caregivers=False)
     p = db.get(Patient, pid)
     if not p:
         raise HTTPException(404, "Patient not found")
