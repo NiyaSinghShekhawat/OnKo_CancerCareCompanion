@@ -60,6 +60,9 @@ export const api = {
     USE_MOCKS ? mock<AttentionItem>({}) : req<AttentionItem>(`/attention/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
   sendQuery: (patient_id: string, text: string) =>
     USE_MOCKS ? mock<PatientQuery>({}) : req<PatientQuery>("/queries", { method: "POST", body: JSON.stringify({ patient_id, text, channel: "app" }) }),
+  updateQuery: (id: string, status: string, response?: string) =>
+    USE_MOCKS ? mock<PatientQuery>({ id, status, response } as PatientQuery)
+      : req<PatientQuery>(`/queries/${id}`, { method: "PATCH", body: JSON.stringify({ status, response: response || null }) }),
   sos: (patient_id: string) =>
     USE_MOCKS ? mock<AttentionItem>({}) : req<AttentionItem>("/sos", { method: "POST", body: JSON.stringify({ patient_id, channel: "app" }) }),
 };
