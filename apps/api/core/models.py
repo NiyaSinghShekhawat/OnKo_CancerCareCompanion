@@ -1,9 +1,10 @@
 """Tables mirror contracts/schemas.json. Field names must stay identical."""
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, JSON, Boolean, Text, ForeignKey
+from sqlalchemy import String, Integer, DateTime, JSON, Boolean, Text, ForeignKey, event, select
 from sqlalchemy.orm import Mapped, mapped_column
 from core.db import Base
+from core.timeutil import utcnow
 
 
 def _id() -> str:
@@ -31,9 +32,12 @@ class Patient(Base):
     cycle_current: Mapped[int] = mapped_column(Integer, default=0)
     cycle_total: Mapped[int] = mapped_column(Integer, default=0)
     journey_state: Mapped[str] = mapped_column(String, default="ACTIVE_TREATMENT")
+    journey_state_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    previous_journey_state: Mapped[str | None] = mapped_column(String, nullable=True)
+    journey_chapter: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     doctor_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"))
     last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class CarePlanItem(Base):
@@ -47,7 +51,7 @@ class CarePlanItem(Base):
     end_date: Mapped[str | None] = mapped_column(String, nullable=True)
     recurrence: Mapped[str | None] = mapped_column(String, nullable=True)
     approved_by: Mapped[str] = mapped_column(String)
-    approved_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    approved_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class CarePlanDraft(Base):
@@ -58,7 +62,7 @@ class CarePlanDraft(Base):
     items: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String, default="DRAFT")
     created_by: Mapped[str] = mapped_column(String)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class CareEvent(Base):
@@ -74,6 +78,16 @@ class CareEvent(Base):
     responded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     source: Mapped[str] = mapped_column(String, default="doctor")
     care_plan_item_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    journey_chapter: Mapped[int] = mapped_column(Integer, server_default="1")   # set by _stamp_chapter below
+
+
+@event.listens_for(CareEvent, "before_insert")
+def _stamp_chapter(mapper, connection, target):
+    """Every new CareEvent belongs to its patient's current journey chapter, whichever code path creates it.
+    An explicitly given chapter is kept. Existing events are never re-stamped."""
+    if target.journey_chapter is None:
+        target.journey_chapter = connection.execute(
+            select(Patient.journey_chapter).where(Patient.id == target.patient_id)).scalar() or 1
 
 
 class AttentionItem(Base):
@@ -85,7 +99,7 @@ class AttentionItem(Base):
     reasons: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String, default="PENDING")
     assigned_to: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class PatientQuery(Base):
@@ -99,7 +113,7 @@ class PatientQuery(Base):
     route_to: Mapped[str] = mapped_column(String, default="admin_queue")
     status: Mapped[str] = mapped_column(String, default="OPEN")
     response: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class Report(Base):
@@ -110,7 +124,7 @@ class Report(Base):
     text: Mapped[str] = mapped_column(Text)
     extracted_values: Mapped[list] = mapped_column(JSON, default=list)
     uploaded_by_role: Mapped[str] = mapped_column(String)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     reviewed: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
@@ -137,4 +151,4 @@ class AuditLog(Base):
     entity_id: Mapped[str] = mapped_column(String)
     before: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     after: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

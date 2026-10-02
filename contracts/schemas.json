@@ -21,7 +21,7 @@
     "abha_id": "string|null", "phone_whatsapp": "string", "preferred_language": "string",
     "diagnosis_label": "string (doctor-entered, displayed as-is)",
     "regimen_label": "string", "cycle_current": "number", "cycle_total": "number",
-    "journey_state": "JourneyState", "doctor_id": "string",
+    "journey_state": "JourneyState", "journey_state_changed_at": "ISO datetime|null", "previous_journey_state": "JourneyState|null", "journey_chapter": "number", "doctor_id": "string",
     "last_reviewed_at": "ISO datetime|null", "created_at": "ISO datetime"
   },
 
@@ -31,7 +31,7 @@
     "scheduled_at": "ISO datetime", "status": "EventStatus",
     "response_state": "ResponseState|null", "responded_at": "ISO datetime|null",
     "source": "doctor|copilot_approved|patient|caregiver|system",
-    "care_plan_item_id": "string|null"
+    "care_plan_item_id": "string|null", "journey_chapter": "number"
   },
 
   "CarePlanItem": {
@@ -49,7 +49,8 @@
 
   "DailyChecklist": {
     "patient_id": "string", "date": "ISO date",
-    "items": "CareEvent[]", "window_closes_at": "ISO datetime", "sent": "boolean"
+    "items": "CareEvent[]", "window_closes_at": "ISO datetime", "sent": "boolean",
+    "paused": "boolean", "reason": "string|null"
   },
 
   "AttentionItem": {
@@ -76,6 +77,14 @@
     "phone_whatsapp": "string", "type": "family|professional",
     "consent_status": "ConsentStatus",
     "permissions": { "view_journey": "boolean", "upload_reports": "boolean", "receive_escalations": "boolean" }
+  },
+
+  "CaregiverView": {
+    "_note": "Data minimization: no diagnosis, details, reports, queries or attention items.",
+    "patient": { "id": "string", "name": "string", "journey_state": "JourneyState", "preferred_language": "string" },
+    "upcoming": "{ id, type: EventType, title, scheduled_at: ISO datetime, status: EventStatus }[] (next 7 days + today's open items; [] if DECEASED)",
+    "recent": "{ id, type: EventType, title, scheduled_at: ISO datetime, status: EventStatus }[] (last 7 days, COMPLETED / REPORTED_MISSED / NO_RESPONSE, newest first)",
+    "can_upload_reports": "boolean", "receives_escalations": "boolean"
   },
 
   "Patient360": {

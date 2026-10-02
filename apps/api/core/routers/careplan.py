@@ -3,13 +3,21 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor, require
+from core.auth import get_actor, require, require_patient_access
 from core.models import Patient, CarePlanDraft, CarePlanItem, CareEvent
 from core.serialize import to_dict
-from core.services import audit
-from ai.copilot import structure_care_plan
+from core.services import audit, recurrence
+from ai.copilot import structure_care_plan, end_date_for
 
 router = APIRouter(tags=["careplan"])
+
+
+def _valid_iso(value) -> bool:
+    try:
+        datetime.fromisoformat(value)
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 class DraftIn(BaseModel):
@@ -56,6 +64,12 @@ def approve_draft(draft_id: str, db=Depends(get_db), actor=Depends(get_actor)):
     d = db.get(CarePlanDraft, draft_id)
     if not d or d.status != "DRAFT":
         raise HTTPException(404, "Draft not found or already decided")
+    missing = [it.get("title") or "untitled item" for it in d.items if not _valid_iso(it.get("start_date"))]
+    if missing:
+        raise HTTPException(400, f"Set a start date for: {', '.join(missing)}")
+    for it in d.items:
+        if not it.get("end_date"):
+            it["end_date"] = end_date_for(it)
     created = []
     for it in d.items:
         item = CarePlanItem(patient_id=d.patient_id, type=it["type"], title=it["title"],
@@ -64,18 +78,19 @@ def approve_draft(draft_id: str, db=Depends(get_db), actor=Depends(get_actor)):
                             approved_by=actor.user_id)
         db.add(item)
         db.flush()
-        # TODO(Samprada): expand recurrence into multiple CareEvents
-        ev = CareEvent(patient_id=d.patient_id, type=item.type, title=item.title, details=item.details,
-                       scheduled_at=datetime.fromisoformat(item.start_date), source="copilot_approved",
-                       care_plan_item_id=item.id)
-        db.add(ev)
-        created.append(ev)
+        for when in recurrence.expand(item.start_date, item.end_date, item.recurrence):
+            ev = CareEvent(patient_id=d.patient_id, type=item.type, title=item.title, details=item.details,
+                           scheduled_at=when, source="copilot_approved", care_plan_item_id=item.id)
+            db.add(ev)
+            created.append(ev)
     d.status = "APPROVED"
-    audit.log(db, actor, "care_plan_approved", "care_plan_draft", d.id, None, {"n_items": len(d.items)})
+    audit.log(db, actor, "care_plan_approved", "care_plan_draft", d.id, None,
+              {"n_items": len(d.items), "n_events": len(created)})
     db.commit()
     return [to_dict(e) for e in created]
 
 
 @router.get("/patients/{pid}/careplan")
-def get_careplan(pid: str, db=Depends(get_db)):
+def get_careplan(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, pid, db, allow_caregivers=False)
     return [to_dict(x) for x in db.query(CarePlanItem).filter_by(patient_id=pid)]

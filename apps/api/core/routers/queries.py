@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor
+from core.auth import STAFF, get_actor, require, require_patient_access
 from core.models import PatientQuery, Patient
 from core.serialize import to_dict
 from core.services import audit, attention
@@ -27,7 +27,7 @@ def create_query(db, actor, patient_id: str, text: str, channel: str) -> Patient
     db.add(q)
     db.flush()
     if c["category"] in {"SYMPTOM_CONCERN", "MEDICATION"}:
-        attention.raise_item(db, p, "QUERY", f"New patient concern logged: {c['summary']}")
+        attention.raise_item(db, p, "QUERY", attention.concern_reason(c["summary"]))
     audit.log(db, actor, "query_created", "patient_query", q.id, None, c)
     db.commit()
     return q
@@ -35,11 +35,13 @@ def create_query(db, actor, patient_id: str, text: str, channel: str) -> Patient
 
 @router.post("/queries")
 def post_query(body: QueryIn, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, body.patient_id, db)
     return to_dict(create_query(db, actor, body.patient_id, body.text, body.channel))
 
 
 @router.get("/queries")
-def list_queries(status: str | None = None, db=Depends(get_db)):
+def list_queries(status: str | None = None, db=Depends(get_db), actor=Depends(get_actor)):
+    require(actor, *STAFF)
     q = db.query(PatientQuery)
     if status:
         q = q.filter_by(status=status.upper())
@@ -53,10 +55,14 @@ class QueryUpdate(BaseModel):
 
 @router.patch("/queries/{qid}")
 def update_query(qid: str, body: QueryUpdate, db=Depends(get_db), actor=Depends(get_actor)):
+    require(actor, *STAFF)   # responding/resolving is the care team's job; resolving also clears attention
     q = db.get(PatientQuery, qid)
     if not q:
         raise HTTPException(404, "Not found")
+    was_resolved = q.status == "RESOLVED"
     q.status, q.response = body.status, body.response or q.response
+    if q.status == "RESOLVED" and not was_resolved:
+        attention.clear_reason(db, db.get(Patient, q.patient_id), "QUERY", attention.query_reasons(q.summary), actor)
     audit.log(db, actor, "query_update", "patient_query", q.id, None, body.model_dump())
     db.commit()
     return to_dict(q)
