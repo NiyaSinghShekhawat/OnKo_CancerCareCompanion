@@ -68,6 +68,7 @@ export interface ReviewSummary { ok: boolean; since: string | null; bullets: str
 
 export interface Patient360 {
   patient: Patient; care_plan: CarePlanItem[]; timeline: CareEvent[]; open_queries: PatientQuery[];
+  query_history?: PatientQuery[];
   reports: Report[]; caregivers: Caregiver[]; attention: AttentionItem[]; since_last_review: ReviewSummary;
 }
 
