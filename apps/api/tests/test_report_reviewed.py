@@ -5,14 +5,19 @@ from fastapi.testclient import TestClient
 
 from core import seed
 from core.db import SessionLocal
-from core.models import AttentionItem, AuditLog, Report
+from core.models import AttentionItem, AuditLog, CareEvent, Report
 from core.services import attention
 from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
 DOCTOR = {"X-Role": "doctor", "X-User-Id": "doc_mehta"}
 NURSE = {"X-Role": "care_team", "X-User-Id": "nurse_anita"}
-MISSED = "Medication reported missed: Capecitabine evening dose"
+def seeded_missed():
+    """Rajesh's seeded missed-dose reason, built by the same rule function the app uses."""
+    s = SessionLocal()
+    e = s.query(CareEvent).filter_by(patient_id="p_rajesh", status="REPORTED_MISSED").one()
+    s.close()
+    return attention.missed_reason(e)
 
 
 @pytest.fixture(autouse=True)
@@ -53,7 +58,7 @@ def test_doctor_marks_reviewed_and_reason_is_cleared(db):
     body = r.json()
     assert body["id"] == rid and body["reviewed"] is True and body["title"] == "CBC — 20 Sep"
     (item,) = needs_review()
-    assert item["reasons"] == [MISSED] and item["status"] == "PENDING"
+    assert item["reasons"] == [seeded_missed()] and item["status"] == "PENDING"
     assert audit_actions(db, rid) == [("report_reviewed", "doc_mehta")]
     assert audit_actions(db, item["id"]) == [("attention_reason_cleared", "doc_mehta")]
 
@@ -65,7 +70,8 @@ def test_care_team_can_mark_reviewed(db):
 @pytest.mark.parametrize("role", ["patient", "caregiver"])
 def test_other_roles_refused_and_nothing_changes(db, role):
     rid = seeded_report_id(db)
-    r = c.patch(f"/reports/{rid}/reviewed", headers={"X-Role": role, "X-User-Id": "x"})
+    user = "p_rajesh" if role == "patient" else "cg_sunita"
+    r = c.patch(f"/reports/{rid}/reviewed", headers={"X-Role": role, "X-User-Id": user})   # Rajesh's own report
     assert r.status_code == 403
     assert db.get(Report, rid).reviewed is False
     assert attention.report_reason("CBC — 20 Sep") in needs_review()[0]["reasons"]
@@ -105,7 +111,7 @@ def test_only_that_reports_reason_is_cleared():
 def test_advance_day_does_not_re_raise_reviewed_report(db):
     c.patch(f"/reports/{seeded_report_id(db)}/reviewed", headers=DOCTOR)
     c.post("/demo/advance-day", headers=DOCTOR)
-    assert needs_review()[0]["reasons"] == [MISSED]
+    assert needs_review()[0]["reasons"] == [seeded_missed()]
 
 
 def test_dashboard_pending_count_drops(db):

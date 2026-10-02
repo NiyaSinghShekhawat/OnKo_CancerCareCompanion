@@ -1,4 +1,3 @@
-from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
@@ -6,6 +5,7 @@ from core.auth import STAFF, get_actor, require, require_patient_access
 from core.models import Patient, CareEvent, CarePlanItem, PatientQuery, Report, Caregiver, AttentionItem
 from core.serialize import to_dict
 from core.services import attention, audit, journey_state, review
+from core.timeutil import utcnow
 from ai.summarize import since_last_review
 
 router = APIRouter(tags=["patients"])
@@ -24,7 +24,7 @@ def list_patients(q: str | None = None, status: str | None = None, db=Depends(ge
 
 @router.get("/patients/{pid}")
 def get_patient(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
-    require_patient_access(actor, pid, db)
+    require_patient_access(actor, pid, db, allow_caregivers=False)   # caregivers: /caregivers/{id}/view
     p = db.get(Patient, pid)
     if not p:
         raise HTTPException(404, "Patient not found")
@@ -33,7 +33,7 @@ def get_patient(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
 
 @router.get("/patients/{pid}/timeline")
 def timeline(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
-    require_patient_access(actor, pid, db)
+    require_patient_access(actor, pid, db, allow_caregivers=False)
     events = db.query(CareEvent).filter_by(patient_id=pid).order_by(CareEvent.scheduled_at).all()
     return [to_dict(e) for e in events]
 
@@ -50,7 +50,7 @@ def patient_360(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
     reports = db.query(Report).filter_by(patient_id=pid).order_by(Report.uploaded_at).all()
     attention_items = db.query(AttentionItem).filter_by(patient_id=pid).order_by(AttentionItem.created_at.desc()).all()
 
-    since, now = p.last_reviewed_at, datetime.utcnow()
+    since, now = p.last_reviewed_at, utcnow()
     new_events = [e for e in events if not since or e.scheduled_at >= since or review.is_open_today(e, now)]
     new_queries = [q for q in queries if not since or q.created_at >= since]
     new_reports = [r for r in reports if not since or r.uploaded_at >= since]
@@ -84,7 +84,7 @@ def mark_reviewed(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
     if not p:
         raise HTTPException(404, "Patient not found")
     before = p.last_reviewed_at.isoformat() if p.last_reviewed_at else None
-    p.last_reviewed_at = datetime.utcnow()
+    p.last_reviewed_at = utcnow()
     audit.log(db, actor, "patient_marked_reviewed", "patient", pid,
               {"last_reviewed_at": before}, {"last_reviewed_at": p.last_reviewed_at.isoformat()})
     db.commit()
@@ -104,7 +104,7 @@ def set_journey_state(pid: str, body: JourneyStateIn, db=Depends(get_db), actor=
         raise HTTPException(404, "Patient not found")
     before = p.journey_state
     if body.state != before:
-        p.journey_state_changed_at = datetime.utcnow()
+        p.journey_state_changed_at = utcnow()
         p.previous_journey_state = before
     p.journey_state = body.state
     audit.log(db, actor, "journey_state_change", "patient", pid, {"state": before}, {"state": body.state, "reason": body.reason})

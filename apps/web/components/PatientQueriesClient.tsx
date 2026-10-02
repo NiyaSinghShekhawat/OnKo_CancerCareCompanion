@@ -60,7 +60,11 @@ export default function PatientQueriesClient({
     if (!text.trim()) return;
     setBusy(true);
     try {
-      await api.sendQuery(p.id, text.trim());
+      await api.sendQuery(
+        p.id,
+        text.trim(),
+        { role: "patient", userId: p.id }
+      );
       setSent(true);
       setText("");
       router.refresh();

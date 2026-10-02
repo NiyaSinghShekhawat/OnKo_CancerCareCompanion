@@ -5,6 +5,7 @@ Every item carries plain factual reasons. See docs/core.md for the rule table.
 from datetime import datetime
 from core.models import AttentionItem, CareEvent, Patient, PatientQuery, Report
 from core.services import audit, journey_state
+from core.timeutil import utcnow
 
 NO_RESPONSE_STREAK = 3
 QUERY_OPEN_HOURS = 24
@@ -46,6 +47,12 @@ def report_reason(title: str) -> str:
 
 def missed_reason(event: CareEvent) -> str:
     return f"{event.type.title()} reported missed: {event.title}, {event.scheduled_at:%d %b}"
+
+
+def streak_reason(events: list[CareEvent]) -> str:
+    """'{n} consecutive daily check-ins unanswered: {dates}' for a run of NO_RESPONSE events, oldest first."""
+    dates = list(dict.fromkeys(f"{e.scheduled_at:%d %b}" for e in events))
+    return f"{len(events)} {STREAK_TEXT}: {', '.join(dates)}"
 
 
 def is_missed_reason(reason: str) -> bool:
@@ -140,17 +147,14 @@ def _unanswered_streak(db, patient: Patient) -> list[CareEvent]:
 
 def recompute_for_patient(db, patient: Patient, now: datetime | None = None):
     """Scan events/queries/reports and call raise_item per rule in docs/core.md."""
-    now = now or datetime.utcnow()
+    now = now or utcnow()
     db.flush()
     if not journey_state.attention_allowed(patient.journey_state):
         return
 
     streak = _unanswered_streak(db, patient) if journey_state.check_in_follow_up_allowed(patient.journey_state) else []
     if len(streak) >= NO_RESPONSE_STREAK:
-        dates = list(dict.fromkeys(f"{e.scheduled_at:%d %b}" for e in streak))
-        _raise_replacing(db, patient, "FOLLOW_UP",
-                         f"{len(streak)} {STREAK_TEXT}: {', '.join(dates)}",
-                         lambda r: STREAK_TEXT in r)
+        _raise_replacing(db, patient, "FOLLOW_UP", streak_reason(streak), lambda r: STREAK_TEXT in r)
 
     queries = (db.query(PatientQuery)
                .filter(PatientQuery.patient_id == patient.id, PatientQuery.status != "RESOLVED")

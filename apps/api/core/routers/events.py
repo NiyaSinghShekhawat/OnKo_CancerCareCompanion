@@ -1,12 +1,12 @@
-from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor, require, require_patient_access
+from core.auth import demo_routes_enabled, get_actor, require, require_patient_access
 from core.models import CareEvent, Patient
-from core.serialize import to_dict
+from core.serialize import event_for
 from core.services import audit, checklist, attention, journey_state
 from core import seed
+from core.timeutil import utcnow
 
 router = APIRouter(tags=["events"])
 
@@ -26,12 +26,12 @@ def set_status(event_id: str, body: StatusIn, db=Depends(get_db), actor=Depends(
     before = e.status
     e.status = body.status
     e.response_state = body.status if body.status in {"COMPLETED", "REPORTED_MISSED", "CONFLICTING"} else e.response_state
-    e.responded_at = datetime.utcnow()
+    e.responded_at = utcnow()
     if body.status == "REPORTED_MISSED":
         attention.raise_missed(db, db.get(Patient, e.patient_id), e)   # no-op for PALLIATIVE
     audit.log(db, actor, "event_status", "care_event", e.id, {"status": before}, {"status": body.status})
     db.commit()
-    return to_dict(e)
+    return event_for(actor, e)
 
 
 @router.get("/patients/{pid}/checklist/today")
@@ -40,16 +40,16 @@ def today(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
     items, closes = checklist.todays_items(db, pid)
     p = db.get(Patient, pid)
     paused = bool(p) and journey_state.checklist_paused(p.journey_state)
-    return {"patient_id": pid, "date": datetime.utcnow().date().isoformat(),
-            "items": [] if paused else [to_dict(i) for i in items],
+    return {"patient_id": pid, "date": utcnow().date().isoformat(),
+            "items": [] if paused else [event_for(actor, i) for i in items],
             "window_closes_at": closes.isoformat(), "sent": False,
             "paused": paused, "reason": f"Journey state {p.journey_state}" if paused else None}
 
 
-@router.post("/demo/advance-day")
+@router.post("/demo/advance-day", dependencies=[Depends(demo_routes_enabled)])
 def advance_day(db=Depends(get_db), actor=Depends(get_actor)):
     require(actor, "doctor")   # changes every patient's events and attention, like /demo/reset
-    now = datetime.utcnow()
+    now = utcnow()
     stale = checklist.close_window(db, now)
     for p in db.query(Patient).all():
         attention.recompute_for_patient(db, p, now)
@@ -57,7 +57,7 @@ def advance_day(db=Depends(get_db), actor=Depends(get_actor)):
     return {"marked_no_response": len(stale)}
 
 
-@router.post("/demo/reset")
+@router.post("/demo/reset", dependencies=[Depends(demo_routes_enabled)])
 def reset_demo(db=Depends(get_db), actor=Depends(get_actor)):
     require(actor, "doctor")
     seed.run(db)

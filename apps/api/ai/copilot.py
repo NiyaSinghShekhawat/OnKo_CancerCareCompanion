@@ -27,7 +27,7 @@ FREQ = [
 TIMING = r"\b(after food|before food|with food|after meals?|before meals?|empty stomach|before chemo\w*|after chemo\w*|" \
          r"before breakfast|after breakfast|before dinner|after dinner)\b"
 DOSE = r"\b(\d+(?:\.\d+)?\s*(?:mg|mcg|µg|g|ml|iu|units?)(?:/(?:m2|kg))?)\b"
-DURATION = r"\b(?:for|x|×)\s*(\d+)\s*(days?|weeks?)\b"
+DURATION = r"(?:\bfor|\bx|×)\s*(\d+)\s*(days?|weeks?)\b"   # "for 14 days", "x 3 days", "x3 days", "× 3 days"
 
 KEYWORDS = {
     "TREATMENT": r"\b(chemo\w*|cycle|radiation|radiotherapy|rt|surgery|infusion|immunotherapy|transfusion|"
@@ -198,6 +198,17 @@ def _finalise(out: dict, raw_text: str) -> dict:
 
     if out.get("unparsed_text"):
         warnings.append(f"Not structured (please add manually if needed): '{out['unparsed_text']}'")
+    # One warning per problem: the LLM often writes its own "date missing" / "dose missing" notes, and we add
+    # canonical ones above, so drop the LLM's versions for those items, then remove exact repeats.
+    ours = {w for w in warnings if w.startswith(("No date given for ", "Dose not specified for "))}
+    titles = [i["title"].lower() for i in clean]
+
+    def _llm_dupe(w: str) -> bool:
+        lw = w.lower()
+        return (w not in ours and any(t and t in lw for t in titles)
+                and any(k in lw for k in ("date", "dose", "dosage", "when", "start", "schedule")))
+    warnings = list(dict.fromkeys(w for w in warnings if not _llm_dupe(w)))
+
     invented = set(items_grounded_in_source(clean, raw_text))
     if invented:
         clean = [i for i in clean if i["title"] not in invented]

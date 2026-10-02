@@ -103,6 +103,9 @@ def call_json(system: str, user: str) -> dict | None:
     """Return parsed JSON or None. Never raises. Retries once if the reply isn't valid JSON."""
     if not ai_available():
         return None
+    max_chars = int(os.getenv("AI_MAX_INPUT_CHARS", "12000"))   # cost guard: one huge paste can't run up the bill
+    if len(user) > max_chars:
+        user = user[:max_chars] + "\n[truncated]"
     call = _gemini if _provider() == "gemini" else _anthropic
     for attempt in range(2):
         try:

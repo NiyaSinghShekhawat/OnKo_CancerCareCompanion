@@ -1,7 +1,7 @@
 """GET /caregivers/{id}/view — caregiver-scoped view with data minimization (owner: Samprada).
 DB is test_onko.db (set in conftest.py), reseeded before every test — never onko.db."""
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from core import seed
 from core.db import SessionLocal
 from core.models import AuditLog, CareEvent, Caregiver
+from core.timeutil import utcnow
 from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
@@ -28,10 +29,6 @@ def db():
     s.close()
 
 
-def cg_id(db, name):
-    return db.query(Caregiver).filter_by(name=name).one().id
-
-
 def as_caregiver(cid):
     return {"X-Role": "caregiver", "X-User-Id": cid}
 
@@ -42,7 +39,7 @@ def view(cid, headers=None):
 
 def add_event(db, pid, title, hours_from_now, status):
     db.add(CareEvent(patient_id=pid, type="MEDICATION", title=title, details={"dose": "SECRET-DOSE"},
-                     scheduled_at=datetime.utcnow() + timedelta(hours=hours_from_now), status=status))
+                     scheduled_at=utcnow() + timedelta(hours=hours_from_now), status=status))
     db.commit()
 
 
@@ -53,7 +50,7 @@ def titles(events):
 # ---------- what is returned ----------
 
 def test_caregiver_sees_only_the_minimized_shape(db):
-    r = view(cg_id(db, "Sunita Kumar"))
+    r = view("cg_sunita")
     assert r.status_code == 200
     body = r.json()
     assert set(body) == {"patient", "upcoming", "recent", "can_upload_reports", "receives_escalations"}
@@ -75,7 +72,7 @@ def test_upcoming_and_recent_windows(db):
     add_event(db, "p_rajesh", "Done 8 days ago", -8 * 24, "COMPLETED")
     add_event(db, "p_rajesh", "No reply 2 days ago", -2 * 24, "NO_RESPONSE")
     add_event(db, "p_rajesh", "Rescheduled yesterday", -24, "RESCHEDULED")
-    body = view(cg_id(db, "Sunita Kumar")).json()
+    body = view("cg_sunita").json()
 
     up = titles(body["upcoming"])
     assert "In 6 days" in up and "Teleconsult with Dr. Mehta" in up
@@ -91,7 +88,7 @@ def test_upcoming_and_recent_windows(db):
 
 
 def test_permission_flags(db):
-    cid = cg_id(db, "Sunita Kumar")
+    cid = "cg_sunita"
     b = view(cid).json()
     assert (b["can_upload_reports"], b["receives_escalations"]) == (True, True)
     c.patch(f"/caregivers/{cid}", json={"permissions": {"view_journey": True, "upload_reports": False,
@@ -101,20 +98,20 @@ def test_permission_flags(db):
 
 
 def test_doctor_can_open_any_caregiver_view(db):
-    assert view(cg_id(db, "Ayesha Ali"), headers=DOCTOR).json()["patient"]["id"] == "p_farhan"
+    assert view("cg_ayesha", headers=DOCTOR).json()["patient"]["id"] == "p_farhan"
 
 
 # ---------- who may call ----------
 
 def test_caregiver_cannot_open_another_caregivers_view(db):
-    r = view(cg_id(db, "Sunita Kumar"), headers=as_caregiver(cg_id(db, "Ayesha Ali")))
+    r = view("cg_sunita", headers=as_caregiver("cg_ayesha"))
     assert r.status_code == 403
 
 
-@pytest.mark.parametrize("role", ["patient", "care_team"])
-def test_other_roles_refused(db, role):
-    cid = cg_id(db, "Sunita Kumar")
-    assert view(cid, headers={"X-Role": role, "X-User-Id": cid}).status_code == 403
+@pytest.mark.parametrize("headers", [{"X-Role": "patient", "X-User-Id": "p_rajesh"},     # Sunita's own patient
+                                     {"X-Role": "care_team", "X-User-Id": "nurse_anita"}])
+def test_other_roles_refused(db, headers):
+    assert view("cg_sunita", headers=headers).status_code == 403
 
 
 def test_unknown_caregiver_is_404():
@@ -124,16 +121,18 @@ def test_unknown_caregiver_is_404():
 # ---------- consent ----------
 
 def test_pending_consent_refused(db):
-    r = view(cg_id(db, "Karthik Sundaram"))                    # seeded PENDING
+    r = view("cg_karthik")                    # seeded PENDING
     assert r.status_code == 403 and r.json()["detail"] == "Caregiver access not granted"
 
 
-@pytest.mark.parametrize("change", [{"consent_status": "REVOKED"},
-                                    {"permissions": {"view_journey": False, "upload_reports": True,
-                                                     "receive_escalations": True}}])
+@pytest.mark.parametrize("change", ["revoke", "no view_journey"])
 def test_revoked_or_no_view_journey_refused_even_for_doctor(db, change):
-    cid = cg_id(db, "Sunita Kumar")
-    c.patch(f"/caregivers/{cid}", json=change, headers=DOCTOR)
+    cid = "cg_sunita"
+    if change == "revoke":
+        assert c.post(f"/caregivers/{cid}/revoke", headers=DOCTOR).status_code == 200
+    else:
+        c.patch(f"/caregivers/{cid}", headers=DOCTOR, json={"permissions": {
+            "view_journey": False, "upload_reports": True, "receive_escalations": True}})
     for headers in (as_caregiver(cid), DOCTOR):
         r = view(cid, headers=headers)
         assert r.status_code == 403 and r.json()["detail"] == "Caregiver access not granted"
@@ -142,7 +141,7 @@ def test_revoked_or_no_view_journey_refused_even_for_doctor(db, change):
 # ---------- journey state ----------
 
 def test_deceased_patient_has_no_upcoming_but_keeps_recent(db):
-    cid = cg_id(db, "Sunita Kumar")
+    cid = "cg_sunita"
     assert view(cid).json()["upcoming"]
     c.patch("/patients/p_rajesh/journey-state", json={"state": "DECEASED", "reason": "test"}, headers=DOCTOR)
     body = view(cid).json()
@@ -150,14 +149,14 @@ def test_deceased_patient_has_no_upcoming_but_keeps_recent(db):
 
 
 def test_seeded_deceased_patient_view(db):
-    body = view(cg_id(db, "Suresh Rao")).json()
+    body = view("cg_suresh").json()
     assert body["patient"]["id"] == "p_kamala" and body["upcoming"] == []
 
 
 # ---------- audit ----------
 
 def test_each_successful_call_is_audited_and_refusals_are_not(db):
-    cid, pending = cg_id(db, "Sunita Kumar"), cg_id(db, "Karthik Sundaram")
+    cid, pending = "cg_sunita", "cg_karthik"
     view(cid)
     view(cid, headers=DOCTOR)
     view(pending)

@@ -4,6 +4,7 @@ import {usePathname} from "next/navigation";
 import {useEffect,useRef,useState} from "react";
 import {CalendarDays,ChevronDown,ClipboardList,FileText,Home,Languages,MessageCircle,MessageSquareText,Pill,Route,UsersRound} from "lucide-react";
 import SOSButton from "@/components/SOSButton";
+import { setActor } from "@/lib/api";
 
 const primary=[
  {href:"/patient",label:"Overview",icon:Home},
@@ -22,6 +23,7 @@ const more=[
 const navCopy={English:["Overview","Journey","Medication","Query","Add Report"],Hindi:["अवलोकन","यात्रा","दवा","प्रश्न","रिपोर्ट जोड़ें"],Telugu:["అవలోకనం","ప్రయాణం","మందులు","ప్రశ్న","రిపోర్ట్ జోడించండి"]} as const;
 export default function PatientShell({patient,children}:{patient:{id:string;name:string;journey_state:string;regimen_label:string;cycle_current:number},children:React.ReactNode}){
  const path=usePathname(),[open,setOpen]=useState(false),[language,setLanguage]=useState<keyof typeof navCopy>("English"),ref=useRef<HTMLDivElement>(null);
+ useEffect(()=>setActor("patient",patient.id),[patient.id]);
  useEffect(()=>{const saved=window.localStorage.getItem("onko-language");if(saved==="Hindi"||saved==="Telugu"||saved==="English")setLanguage(saved);const sync=()=>{const v=window.localStorage.getItem("onko-language");if(v==="Hindi"||v==="Telugu"||v==="English")setLanguage(v)};window.addEventListener("onko-language-change",sync);return()=>window.removeEventListener("onko-language-change",sync)},[]);
  useEffect(()=>{const close=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false)};document.addEventListener("mousedown",close);return()=>document.removeEventListener("mousedown",close)},[]);
  const initials=patient.name.split(" ").map(x=>x[0]).join("").slice(0,2);

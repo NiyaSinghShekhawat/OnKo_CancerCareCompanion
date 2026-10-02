@@ -1,2 +1,80 @@
-"use client";import {useState} from "react";import {Bell,Check,Globe2,ShieldCheck,UserRound,UsersRound,X} from "lucide-react";import type {Caregiver,Patient} from "@/lib/types";import ABHAConnection from "@/components/ABHAConnection";import PatientFirstAccess from "@/components/PatientFirstAccess";import LanguagePreview from "@/components/LanguagePreview";
-export default function PatientProfileClient({p,c}:{p:Patient;c?:Caregiver}){const [language,setLanguage]=useState(p.preferred_language),[whatsapp,setWhatsapp]=useState(true),[saved,setSaved]=useState(false),[manage,setManage]=useState(false),[perms,setPerms]=useState(c?.permissions||{view_journey:false,upload_reports:false,receive_escalations:false}),[caregiverState,setCaregiverState]=useState(c?.consent_status||"PENDING"),[invite,setInvite]=useState(false);return <div className="mx-auto max-w-5xl"><p className="onko-eyebrow">Profile & access</p><h1 className="mt-1 text-[30px] font-bold sm:text-[38px]">My Care Profile</h1><p className="mt-2 text-[14px] text-onko-muted">Caregiver access, consent and communication preferences live here so your main care navigation stays focused.</p><section className="onko-card mt-5 p-5"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-onko-softteal text-onko-teal"><UserRound size={20}/></span><div><h2 className="text-[19px] font-bold">{p.name}</h2><p className="text-[13px] text-onko-muted">{p.id} · {p.phone_whatsapp}</p></div></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-xl bg-onko-surface p-4"><p className="text-[11px] font-bold uppercase text-onko-muted">Journey state</p><p className="mt-1 text-[14px] font-bold capitalize">{p.journey_state.replaceAll("_"," ").toLowerCase()}</p></div><div className="rounded-xl bg-onko-surface p-4"><p className="text-[11px] font-bold uppercase text-onko-muted">ABHA linkage</p><p className="mt-1 text-[14px] font-bold">{p.abha_id||"Not linked in this prototype"}</p><ABHAConnection abhaId={p.abha_id}/><PatientFirstAccess patient={p}/></div></div></section><section className="onko-card mt-5 p-5"><div className="flex items-center gap-3"><UsersRound size={20} className="text-onko-teal"/><h2 className="text-[20px] font-bold">Caregiver & consent</h2></div>{c?<div className="mt-4 rounded-xl bg-onko-surface p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><strong className="text-[16px]">{c.name}</strong><p className="mt-1 text-[13px] text-onko-muted">{c.relation} · {c.type} caregiver</p></div><span className={"onko-chip "+(caregiverState==="GRANTED"?"bg-onko-softteal text-onko-teal":caregiverState==="REVOKED"?"bg-red-50 text-onko-sos":"bg-onko-amberbg text-onko-amber")}>{caregiverState}</span></div><div className="mt-4 grid gap-2 sm:grid-cols-3">{[["View journey",perms.view_journey],["Upload reports",perms.upload_reports],["Receive escalations",perms.receive_escalations]].map(([label,on])=><div key={String(label)} className="flex items-center gap-2 rounded-lg bg-white p-3 text-[13px]"><span className={"grid h-5 w-5 place-items-center rounded-full "+(on?"bg-onko-teal text-white":"bg-onko-hover text-onko-muted")}>{on&&<Check size={12}/>}</span>{label}</div>)}</div><div className="mt-4 flex flex-wrap gap-2"><button className="onko-button-secondary" onClick={()=>setManage(true)}>Manage permissions</button><button onClick={()=>setCaregiverState(caregiverState==="REVOKED"?"PENDING":"REVOKED")} className="onko-button-secondary text-onko-sos">{caregiverState==="REVOKED"?"Start new invitation":"Revoke caregiver access"}</button></div></div>:<button className="onko-button-primary mt-4">Invite caregiver</button>}<div className="mt-4 flex gap-3 rounded-xl bg-onko-softteal/60 p-4 text-[13px] leading-5 text-onko-muted"><ShieldCheck size={18} className="shrink-0 text-onko-teal"/>Caregiver access is patient-controlled and revocable. Backend enforcement will use the same recorded permission scopes.</div></section><section id="language" className="onko-card mt-5 scroll-mt-28 p-5"><div className="flex items-center gap-3"><Globe2 size={20} className="text-onko-teal"/><h2 className="text-[20px] font-bold">Language & communication</h2></div><div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-[13px] font-semibold">Preferred language<select value={language} onChange={e=>{setLanguage(e.target.value);setSaved(false)}} className="mt-2 w-full rounded-xl border border-onko-line bg-white p-3 text-[14px]"><option>English</option><option>Hindi</option><option>Telugu</option></select></label><div><p className="text-[13px] font-semibold">Daily WhatsApp checklist</p><button onClick={()=>{setWhatsapp(v=>!v);setSaved(false)}} className={"mt-2 flex w-full items-center justify-between rounded-xl border p-3 text-[14px] "+(whatsapp?"border-onko-teal bg-onko-softteal":"border-onko-line bg-white")}><span className="flex items-center gap-2"><Bell size={17}/>{whatsapp?"Enabled":"Disabled"}</span><span className={"h-5 w-9 rounded-full p-0.5 "+(whatsapp?"bg-onko-teal":"bg-onko-line")}><span className={"block h-4 w-4 rounded-full bg-white transition "+(whatsapp?"translate-x-4":"")}/></span></button></div></div><LanguagePreview language={language}/><button onClick={()=>{window.localStorage.setItem("onko-language",language);window.dispatchEvent(new Event("onko-language-change"));setSaved(true)}} className="onko-button-primary mt-4">Save prototype preferences</button>{saved&&<p className="mt-3 text-[13px] font-semibold text-onko-teal">Preferences updated in this UI session.</p>}</section>{invite&&<div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4"><div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"><div className="flex justify-between"><h2 className="text-[21px] font-bold">Invite caregiver</h2><button onClick={()=>setInvite(false)} aria-label="Close invite dialog"><X/></button></div><div className="mt-4 grid gap-3"><input className="rounded-xl border border-onko-line p-3" placeholder="Caregiver name"/><input className="rounded-xl border border-onko-line p-3" placeholder="Relationship"/><input className="rounded-xl border border-onko-line p-3" placeholder="WhatsApp number"/></div><p className="mt-3 text-[11px] text-onko-muted">Invitation and identity verification require backend integration. No access is granted by this preview.</p><button onClick={()=>setInvite(false)} className="onko-button-primary mt-4 w-full">Preview invitation</button></div></div>}{manage&&<div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4"><div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"><div className="flex justify-between"><h2 className="text-[21px] font-bold">Caregiver permissions</h2><button onClick={()=>setManage(false)}><X/></button></div><div className="mt-4 space-y-3">{([["View journey","view_journey"],["Upload reports","upload_reports"],["Receive escalations","receive_escalations"]] as const).map(([label,key])=><button key={key} onClick={()=>setPerms({...perms,[key]:!perms[key]})} className="flex w-full items-center justify-between rounded-xl bg-onko-surface p-4 text-[14px] font-semibold"><span>{label}</span><span className={"rounded-full px-2 py-1 text-[11px] "+(perms[key]?"bg-onko-softteal text-onko-teal":"bg-white text-onko-muted")}>{perms[key]?"Shared":"Not shared"}</span></button>)}</div><button onClick={()=>setManage(false)} className="onko-button-primary mt-5 w-full">Save prototype permissions</button></div></div>}</div>}
+"use client";
+
+import { useState } from "react";
+import { Bell, Globe2, ShieldCheck, UserRound, UsersRound } from "lucide-react";
+import type { Caregiver, Patient } from "@/lib/types";
+import ABHAConnection from "@/components/ABHAConnection";
+import PatientFirstAccess from "@/components/PatientFirstAccess";
+import LanguagePreview from "@/components/LanguagePreview";
+import CaregiverLifecycle from "@/components/CaregiverLifecycle";
+
+export default function PatientProfileClient({ p, c }: { p: Patient; c?: Caregiver }) {
+  const [language, setLanguage] = useState(p.preferred_language);
+  const [whatsapp, setWhatsapp] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  return (
+    <div className="mx-auto max-w-5xl">
+      <p className="onko-eyebrow">Profile & access</p>
+      <h1 className="mt-1 text-[30px] font-bold sm:text-[38px]">My Care Profile</h1>
+      <p className="mt-2 text-[14px] text-onko-muted">
+        Caregiver access, consent and communication preferences live here so your main care navigation stays focused.
+      </p>
+
+      <section className="onko-card mt-5 p-5">
+        <div className="flex items-center gap-3">
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-onko-softteal text-onko-teal"><UserRound size={20}/></span>
+          <div><h2 className="text-[19px] font-bold">{p.name}</h2><p className="text-[13px] text-onko-muted">{p.id} · {p.phone_whatsapp}</p></div>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl bg-onko-surface p-4">
+            <p className="text-[11px] font-bold uppercase text-onko-muted">Journey state</p>
+            <p className="mt-1 text-[14px] font-bold capitalize">{p.journey_state.replaceAll("_"," ").toLowerCase()}</p>
+            <p className="mt-1 text-[12px] text-onko-muted">Chapter {p.journey_chapter}</p>
+          </div>
+          <div className="rounded-xl bg-onko-surface p-4">
+            <p className="text-[11px] font-bold uppercase text-onko-muted">ABHA linkage</p>
+            <p className="mt-1 text-[14px] font-bold">{p.abha_id||"Not linked in this prototype"}</p>
+            <ABHAConnection abhaId={p.abha_id}/>
+            <PatientFirstAccess patient={p}/>
+          </div>
+        </div>
+      </section>
+
+      <section className="onko-card mt-5 p-5">
+        <div className="flex items-center gap-3"><UsersRound size={20} className="text-onko-teal"/><h2 className="text-[20px] font-bold">Caregiver & consent</h2></div>
+        <div className="mt-3 flex gap-3 rounded-xl bg-onko-softteal/60 p-4 text-[13px] leading-5 text-onko-muted">
+          <ShieldCheck size={18} className="shrink-0 text-onko-teal"/>
+          Caregiver access is patient-controlled and revocable. Consent and permission changes below are persisted to the shared backend.
+        </div>
+      </section>
+
+      {c ? (
+        <div className="mt-5"><CaregiverLifecycle caregiver={c} mode="patient"/></div>
+      ) : (
+        <section className="onko-card mt-5 p-5 text-[14px] text-onko-muted">No caregiver is currently linked to this patient.</section>
+      )}
+
+      <section id="language" className="onko-card mt-5 scroll-mt-28 p-5">
+        <div className="flex items-center gap-3"><Globe2 size={20} className="text-onko-teal"/><h2 className="text-[20px] font-bold">Language & communication</h2></div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <label className="text-[13px] font-semibold">Preferred language
+            <select value={language} onChange={e=>{setLanguage(e.target.value);setSaved(false)}} className="mt-2 w-full rounded-xl border border-onko-line bg-white p-3 text-[14px]">
+              <option>English</option><option>Hindi</option><option>Telugu</option>
+            </select>
+          </label>
+          <div>
+            <p className="text-[13px] font-semibold">Daily WhatsApp checklist</p>
+            <button onClick={()=>{setWhatsapp(v=>!v);setSaved(false)}} className={"mt-2 flex w-full items-center justify-between rounded-xl border p-3 text-[14px] "+(whatsapp?"border-onko-teal bg-onko-softteal":"border-onko-line bg-white")}>
+              <span className="flex items-center gap-2"><Bell size={17}/>{whatsapp?"Enabled":"Disabled"}</span>
+              <span className={"h-5 w-9 rounded-full p-0.5 "+(whatsapp?"bg-onko-teal":"bg-onko-line")}><span className={"block h-4 w-4 rounded-full bg-white transition "+(whatsapp?"translate-x-4":"")}/></span>
+            </button>
+          </div>
+        </div>
+        <LanguagePreview language={language}/>
+        <button onClick={()=>{window.localStorage.setItem("onko-language",language);window.dispatchEvent(new Event("onko-language-change"));setSaved(true)}} className="onko-button-primary mt-4">Save prototype preferences</button>
+        {saved&&<p className="mt-3 text-[13px] font-semibold text-onko-teal">Preferences updated in this UI session.</p>}
+      </section>
+    </div>
+  );
+}

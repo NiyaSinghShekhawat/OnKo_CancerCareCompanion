@@ -14,10 +14,6 @@ def can_message(state: str) -> bool:
     return MESSAGING_ALLOWED.get(state, False)
 
 
-def adherence_nudges_allowed(state: str) -> bool:
-    return state in {"ACTIVE_TREATMENT", "RELAPSE"}
-
-
 # ---- What core does per state (attention queue, daily checklist, 24h window) ----
 NEW_CHAPTER = {"RELAPSE"}                                # switching here starts a new journey chapter
 NO_ATTENTION = {"DECEASED"}                              # no new attention items of any kind

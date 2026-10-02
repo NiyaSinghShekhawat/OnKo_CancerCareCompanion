@@ -1,11 +1,11 @@
 import PatientShell from "@/components/PatientShell";
 import PatientQueriesClient from "@/components/PatientQueriesClient";
-import { api } from "@/lib/api";
+import { serverApi } from "@/lib/server-api";
 
 export const dynamic = "force-dynamic";
 
 export default async function QueriesPage() {
-  const d = await api.patient360("p_rajesh");
+  const d = await serverApi.patient360("p_rajesh");
   return (
     <PatientShell patient={d.patient}>
       <PatientQueriesClient
