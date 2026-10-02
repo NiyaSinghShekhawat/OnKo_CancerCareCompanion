@@ -14,7 +14,12 @@ from main import app
 
 c = TestClient(app, headers={"X-Role": "doctor", "X-User-Id": "doc_mehta"})   # auth headers are required; per-request headers override
 DOCTOR = {"X-Role": "doctor", "X-User-Id": "doc_mehta"}
-MISSED = "Medication reported missed: Capecitabine evening dose"
+def seeded_missed():
+    """Rajesh's seeded missed-dose reason, built by the same rule function the app uses."""
+    s = SessionLocal()
+    e = s.query(CareEvent).filter_by(patient_id="p_rajesh", status="REPORTED_MISSED").one()
+    s.close()
+    return attention.missed_reason(e)
 CBC = attention.report_reason("CBC — 20 Sep")
 
 
@@ -80,7 +85,7 @@ def test_switch_leaves_query_items_alone():
 def test_switch_closes_needs_review_left_with_only_missed_reasons(db):
     report_id = db.query(Report).filter_by(patient_id="p_rajesh").one().id
     c.patch(f"/reports/{report_id}/reviewed", headers=DOCTOR)
-    assert reasons("p_rajesh", "NEEDS_REVIEW") == [MISSED]
+    assert reasons("p_rajesh", "NEEDS_REVIEW") == [seeded_missed()]
     set_state("p_rajesh", "PALLIATIVE")
     assert open_items("p_rajesh", "NEEDS_REVIEW") == []
 
@@ -90,7 +95,7 @@ def test_other_states_do_not_suppress():
         set_state("p_arjun", state)
         set_state("p_rajesh", state)
         assert len(open_items("p_arjun", "FOLLOW_UP")) == 1
-        assert MISSED in reasons("p_rajesh", "NEEDS_REVIEW")
+        assert seeded_missed() in reasons("p_rajesh", "NEEDS_REVIEW")
 
 
 # ---------- while PALLIATIVE ----------

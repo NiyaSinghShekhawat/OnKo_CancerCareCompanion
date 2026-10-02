@@ -7,6 +7,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
 
 from core.db import Base, engine, SessionLocal
 from core import models as m
+from core.services import attention
 from core.timeutil import utcnow
 
 
@@ -62,13 +63,16 @@ def _load(db):
     db.add_all([rajesh, priya, arjun, lakshmi])
     db.flush()
 
+    rajesh_missed = m.CareEvent(patient_id="p_rajesh", type="MEDICATION", title="Capecitabine 500mg",
+                                details={"dose": "500 mg", "frequency": "twice daily", "timing": "after food"},
+                                scheduled_at=d(-1, 21), status="REPORTED_MISSED", response_state="REPORTED_MISSED")
+    arjun_unanswered = [m.CareEvent(patient_id="p_arjun", type="MEDICATION", title="Daily check-in", scheduled_at=d(-i),
+                                    status="NO_RESPONSE", response_state="NO_RESPONSE") for i in (3, 2, 1)]
     db.add_all([
         m.CareEvent(patient_id="p_rajesh", type="TREATMENT", title="Chemotherapy Cycle 4 (Day 1)",
                     details={"location": "Day Care Centre", "instructions": "Pre-medication: Dexamethasone & Ondansetron"},
                     scheduled_at=d(0, 9), status="CURRENT"),
-        m.CareEvent(patient_id="p_rajesh", type="MEDICATION", title="Capecitabine 500mg",
-                    details={"dose": "500 mg", "frequency": "twice daily", "timing": "after food"},
-                    scheduled_at=d(-1, 21), status="REPORTED_MISSED", response_state="REPORTED_MISSED"),
+        rajesh_missed,
         m.CareEvent(patient_id="p_rajesh", type="MEDICATION", title="Capecitabine 500mg",
                     details={"dose": "500 mg", "frequency": "twice daily", "timing": "after food"},
                     scheduled_at=d(0, 21), status="UPCOMING"),
@@ -77,8 +81,7 @@ def _load(db):
         m.CareEvent(patient_id="p_rajesh", type="APPOINTMENT", title="Teleconsult with Dr. Mehta", scheduled_at=d(2, 11)),
         m.CareEvent(patient_id="p_rajesh", type="MILESTONE", title="Daily 15-min walk", scheduled_at=d(0, 18)),
         m.CareEvent(patient_id="p_priya", type="TREATMENT", title="Chemotherapy Cycle 3 (Day 1)", scheduled_at=d(1, 10)),
-        *[m.CareEvent(patient_id="p_arjun", type="MEDICATION", title="Daily check-in", scheduled_at=d(-i),
-                      status="NO_RESPONSE", response_state="NO_RESPONSE") for i in (1, 2, 3)],
+        *arjun_unanswered,
     ])
 
     db.add(m.Report(patient_id="p_rajesh", title="CBC — 20 Sep", uploaded_by_role="caregiver",
@@ -99,14 +102,14 @@ def _load(db):
                     phone_whatsapp="whatsapp:+910000000011", consent_status="PENDING"),
     ])
 
+    # Reason texts come from the same functions the rules use, so they match exactly and clear_reason can remove them.
     db.add_all([
         m.AttentionItem(patient_id="p_rajesh", patient_name="Rajesh Kumar", label="NEEDS_REVIEW",
-                        reasons=["Medication reported missed: Capecitabine evening dose",
-                                 "New report awaiting review: CBC — 20 Sep"]),
+                        reasons=[attention.missed_reason(rajesh_missed), attention.report_reason("CBC — 20 Sep")]),
         m.AttentionItem(patient_id="p_rajesh", patient_name="Rajesh Kumar", label="QUERY",
-                        reasons=["New patient concern logged: Patient reports nausea since yesterday and mild discomfort."]),
+                        reasons=[attention.concern_reason("Patient reports nausea since yesterday and mild discomfort.")]),
         m.AttentionItem(patient_id="p_arjun", patient_name="Arjun Reddy", label="FOLLOW_UP",
-                        reasons=["3 consecutive daily check-ins unanswered"], assigned_to="nurse_anita"),
+                        reasons=[attention.streak_reason(arjun_unanswered)], assigned_to="nurse_anita"),
     ])
     db.flush()
 
@@ -116,7 +119,6 @@ def _load(db):
 def _load_other_journey_states(db, now, d):
     """One patient per remaining journey state. Their attention comes from the real rules (raise_item /
     raise_missed / recompute_for_patient), so the seed shows exactly what the app would produce."""
-    from core.services import attention
 
     def patient(pid, name, age, gender, n, language, diagnosis, state, previous, changed_days_ago, chapter=1, **kw):
         return m.Patient(id=pid, name=name, age=age, gender=gender, phone_whatsapp=f"whatsapp:+9100000000{n:02d}",

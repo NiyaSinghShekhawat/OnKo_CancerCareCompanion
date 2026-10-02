@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from core import seed
 from core.auth import Actor
 from core.db import SessionLocal
-from core.models import AttentionItem, AuditLog, Patient, PatientQuery, Report
+from core.models import AttentionItem, AuditLog, CareEvent, Patient, PatientQuery, Report
 from core.services import attention
 from core.timeutil import utcnow
 from main import app
@@ -103,7 +103,8 @@ def test_report_reviewed_clears_seeded_report_reason(db):
     attention.clear_reason(db, db.get(Patient, "p_rajesh"), "NEEDS_REVIEW", attention.report_reason(rep.title), DOCTOR)
     db.commit()
     (left,) = open_item("NEEDS_REVIEW", "p_rajesh")
-    assert left["reasons"] == ["Medication reported missed: Capecitabine evening dose"]
+    missed = db.query(CareEvent).filter_by(patient_id="p_rajesh", status="REPORTED_MISSED").one()
+    assert left["reasons"] == [attention.missed_reason(missed)]
     attention.recompute_for_patient(db, db.get(Patient, "p_rajesh"))   # reviewed report is not re-raised
     db.commit()
     assert open_item("NEEDS_REVIEW", "p_rajesh")[0]["reasons"] == left["reasons"]

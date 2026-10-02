@@ -49,6 +49,12 @@ def missed_reason(event: CareEvent) -> str:
     return f"{event.type.title()} reported missed: {event.title}, {event.scheduled_at:%d %b}"
 
 
+def streak_reason(events: list[CareEvent]) -> str:
+    """'{n} consecutive daily check-ins unanswered: {dates}' for a run of NO_RESPONSE events, oldest first."""
+    dates = list(dict.fromkeys(f"{e.scheduled_at:%d %b}" for e in events))
+    return f"{len(events)} {STREAK_TEXT}: {', '.join(dates)}"
+
+
 def is_missed_reason(reason: str) -> bool:
     return reason.startswith(MISSED_PREFIXES)
 
@@ -148,10 +154,7 @@ def recompute_for_patient(db, patient: Patient, now: datetime | None = None):
 
     streak = _unanswered_streak(db, patient) if journey_state.check_in_follow_up_allowed(patient.journey_state) else []
     if len(streak) >= NO_RESPONSE_STREAK:
-        dates = list(dict.fromkeys(f"{e.scheduled_at:%d %b}" for e in streak))
-        _raise_replacing(db, patient, "FOLLOW_UP",
-                         f"{len(streak)} {STREAK_TEXT}: {', '.join(dates)}",
-                         lambda r: STREAK_TEXT in r)
+        _raise_replacing(db, patient, "FOLLOW_UP", streak_reason(streak), lambda r: STREAK_TEXT in r)
 
     queries = (db.query(PatientQuery)
                .filter(PatientQuery.patient_id == patient.id, PatientQuery.status != "RESOLVED")

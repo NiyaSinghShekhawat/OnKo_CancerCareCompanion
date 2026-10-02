@@ -85,11 +85,13 @@ All caregivers except Karthik have `view_journey`, `upload_reports` and `receive
 
 ### Seeded attention queue
 
+Every seeded reason is built by the same functions the rules use (§4), so it reads exactly like a rule-generated reason and `clear_reason` can remove it. Dates are relative to the day you seed.
+
 | Patient | Label | Reasons | Assigned |
 |---|---|---|---|
-| Rajesh | NEEDS_REVIEW | "Medication reported missed: Capecitabine evening dose"; "New report awaiting review: CBC — 20 Sep" | — |
+| Rajesh | NEEDS_REVIEW | "Medication reported missed: Capecitabine 500mg, {yesterday, DD Mon}"; "New report awaiting review: CBC — 20 Sep" | — |
 | Rajesh | QUERY | "New patient concern logged: Patient reports nausea since yesterday and mild discomfort." | — |
-| Arjun | FOLLOW_UP | "3 consecutive daily check-ins unanswered" | `nurse_anita` |
+| Arjun | FOLLOW_UP | "3 consecutive daily check-ins unanswered: {3 days ago}, {2 days ago}, {yesterday}" (each DD Mon) | `nurse_anita` |
 | Meera | QUERY | "New patient concern logged: Asks whether the evening tablet can be taken after dinner instead of before." | — |
 
 ---
@@ -291,5 +293,4 @@ Every audit entry has `actor_id`, `actor_role`, `action`, `entity_type`, `entity
 - **Demo auth is header-based, not a real login.** Anyone who knows a valid id can send it as a header; there are no passwords, tokens or sessions.
 - **Events from before a relapse stay scheduled** until the doctor changes the plan. A relapse starts a new chapter but does not cancel chapter-1 events that are still UPCOMING; they keep appearing in the checklist and timeline.
 - **Rules run on events, not on a clock.** The FOLLOW_UP streak, the open-query >24h rule and re-raising unreviewed reports only run on `POST /demo/advance-day`; there is no background scheduler.
-- **Two seeded reasons are hand-written** and don't match the rule format: Rajesh's `Medication reported missed: Capecitabine evening dose` (no date) and Arjun's `3 consecutive daily check-ins unanswered` (no dates). Arjun's is replaced by the dated rule text on the next advance-day.
 - **Caregivers invited after seeding get random ids**; only the seeded ones are fixed.
