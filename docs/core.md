@@ -26,7 +26,7 @@ This page describes what the code in `apps/api/core/` does today. If this page a
 | Clock (naive UTC) | `timeutil.py` |
 | Demo data | `seed.py` |
 
-Core calls AI only through `ai.*` functions (`structure_care_plan`, `classify_query`, `extract_report_values`, `since_last_review`, `end_date_for`). Core writes no prompts. WhatsApp (`whatsapp/`) calls three core functions directly — `set_status`, `create_query`, `trigger_sos` — with `Actor("patient", <that patient's id>)`.
+Core calls AI only through `ai.*` functions (`structure_care_plan`, `classify_query`, `extract_report_values`, `since_last_review`, `end_date_for`). Core writes no prompts. WhatsApp (`whatsapp/`) calls three core functions directly — `set_status`, `create_query`, `trigger_sos` — with `Actor("patient", <that patient's id>)`. In the other direction, core's `trigger_sos` calls `whatsapp.messages.notify_caregivers`, so app and WhatsApp SOS alert caregivers the same way (§4).
 
 ---
 
@@ -70,7 +70,25 @@ Core runs on SQLite (local dev, tests) and Postgres (Supabase) with the same cod
 
 Tests always use SQLite (`test_onko.db`), never Supabase.
 
-Not covered by the access code, because they don't go through core auth: `/docs`, `/openapi.json`, `POST /whatsapp/webhook` (Twilio can't send custom headers) and `POST /whatsapp/send-checklist/{id}` (in `whatsapp/`). WhatsApp's internal calls into core build their actor directly and are unaffected. The web app must add `X-Access-Code` to every request when the code is set. Tests force both switches off in `tests/conftest.py`, whatever your `.env` says.
+The two WhatsApp routes (in `whatsapp/`):
+
+| Route | Protection |
+|---|---|
+| `POST /whatsapp/send-checklist/{id}` | Doctor or care_team headers — plus `X-Access-Code` when `DEMO_ACCESS_CODE` is set (same checks as core) — **or** `X-Cron-Secret` equal to `CRON_SECRET`, for a scheduler calling over HTTP. Patients and caregivers get 403. `python -m whatsapp.daily` sends directly through the database and needs no header. |
+| `POST /whatsapp/webhook` | Not covered by the access code (Twilio can't send custom headers). Instead it rejects requests without a valid Twilio signature (403) whenever `TWILIO_AUTH_TOKEN` is set; `TWILIO_VALIDATE_SIGNATURE=false` turns that off for local debugging. |
+
+`/docs` and `/openapi.json` are not behind the access code. WhatsApp's internal calls into core build their actor directly and are unaffected. The web app must add `X-Access-Code` to every request when the code is set. Tests force both switches off in `tests/conftest.py`, whatever your `.env` says.
+
+### Deployed (shared demo)
+
+| What | Where |
+|---|---|
+| Backend | https://onko-api.onrender.com (Render). API docs at `/docs`. |
+| Database | One shared Supabase database (Session pooler URL, §2 Supabase); every teammate's actions land in the same data. |
+| Access code | Shared by DM only. Never write it in the repo, docs, issues or chat channels. |
+
+- **Free tier sleeps.** Render's free instance stops after about 15 minutes without traffic; the first request after that takes a while to wake it. Open `/docs` a minute before demoing.
+- **Reset only by agreement.** `POST /demo/reset` (and `python -m core.seed` against the Supabase URL) wipes everyone's shared data. Agree in the group first.
 
 ---
 
@@ -135,7 +153,9 @@ Each patient has at most one open item (`PENDING` or `ACKNOWLEDGED`) per label. 
 | A query not RESOLVED, open for more than 24 whole hours (first raised at 25h) | `POST /demo/advance-day` | QUERY | `Query unresolved for {hours}h: {summary}` (replaces the older hours for the same query) | DECEASED |
 | New query classified SYMPTOM_CONCERN or MEDICATION (ADMINISTRATIVE raises nothing) | `POST /queries`, WhatsApp free text | QUERY | `New patient concern logged: {summary}` | DECEASED (the query is still saved) |
 | Report uploaded and not yet reviewed | `POST /patients/{id}/reports`; again on `POST /demo/advance-day` for every unreviewed report | NEEDS_REVIEW | `New report awaiting review: {title}` | DECEASED (the report is still saved) |
-| SOS pressed by the patient (or their consented caregiver, or staff on their behalf) | `POST /sos`, WhatsApp "SOS" | SOS | `Patient-triggered SOS via {channel}` (`app`, `whatsapp`, …) | DECEASED: `POST /sos` returns 409; WhatsApp does not trigger SOS |
+| SOS pressed by the patient (or their consented caregiver, or staff on their behalf) | `POST /sos`, WhatsApp "SOS" | SOS | `Patient-triggered SOS via {channel}` (`app`, `whatsapp`, …) | DECEASED: `POST /sos` returns 409; a WhatsApp "SOS" gets no reply and raises nothing |
+
+**SOS also alerts caregivers.** Every SOS that raises an item (app or WhatsApp) sends a WhatsApp alert to the patient's caregivers who have consent GRANTED and `receive_escalations` on. This happens in every journey state except DECEASED — **including TRANSFER_OF_CARE**, where only routine automated messages are paused. A repeat SOS for the same patient within 60 seconds is still recorded (`sos_triggered`) on the open SOS item, but doesn't alert caregivers again; the check uses the `caregivers_notified` audit entry, so it holds across restarts. The patient's WhatsApp reply says whether caregivers were alerted.
 
 **Reasons are removed** (with an audit entry) when:
 
@@ -170,8 +190,8 @@ Journey states are set only by a doctor (`PATCH /patients/{id}/journey-state`). 
 | REMISSION_SURVIVORSHIP | yes | yes | yes | yes | yes | — | yes | yes |
 | RELAPSE | yes | yes | yes | yes | yes | `journey_chapter` + 1 (audited) | yes | yes |
 | PALLIATIVE | yes | yes | **no** | **no** | yes | open FOLLOW_UP closed; missed-dose reasons removed from NEEDS_REVIEW (report reasons stay) | yes | yes (gentler checklist wording in `whatsapp/`) |
-| TRANSFER_OF_CARE | **paused** | **no** | yes¹ | **no** | yes | existing items stay open | yes | **no** (inbound text still becomes a query; SOS still works) |
-| DECEASED | **paused** | **no** | **no** | **no** | **no** new items; `POST /sos` → 409 | every open item closed | **[]** (history only) | **no** (hard stop) |
+| TRANSFER_OF_CARE | **paused** | **no** | yes¹ | **no** | yes | existing items stay open | yes | **no** routine messages (`send-checklist` returns `sent: false`; inbound text becomes a query and gets a "paused" reply). SOS still raises the item **and alerts caregivers** |
+| DECEASED | **paused** | **no** | **no** | **no** | **no** new items; `POST /sos` → 409 | every open item closed | **[]** (history only) | **no** (hard stop: no replies at all; inbound text is still saved as a query, without an attention item; WhatsApp "SOS" is ignored; no caregiver alerts) |
 
 ¹ Only if a missed dose is reported through `PATCH /events/{id}/status`; the checklist that would normally produce it is paused.
 
@@ -192,7 +212,7 @@ AI output is only ever a DRAFT. Only `POST /careplan/draft/{id}/approve` (doctor
 On approve, in this order:
 
 1. **Start date check.** Every item needs a `start_date` that `datetime.fromisoformat` accepts (`2026-10-15` or a full datetime). If any are missing or invalid: **400 `Set a start date for: {comma-separated titles}`** ("untitled item" if no title) and nothing is created.
-2. **End date from duration.** For items with no `end_date`, `ai.copilot.end_date_for(item)` computes one from the doctor's text (`source_span`): "for N days/weeks" or "x N days/weeks" → `start_date + N days − 1` (inclusive; e.g. start 15 Oct "for 14 days" → 28 Oct). No duration in the text → `end_date` stays null. ("× N days" with the multiplication sign is not recognised today.) The computed value is saved on the CarePlanItem.
+2. **End date from duration.** For items with no `end_date`, `ai.copilot.end_date_for(item)` computes one from the doctor's text (`source_span`): "for N days/weeks", "x N days/weeks", "xN days" or "× N days/weeks" → `start_date + N days − 1` (inclusive; a week is 7 days; e.g. start 15 Oct "for 14 days" → 28 Oct, "× 3 days" → 17 Oct). No duration in the text → `end_date` stays null. The computed value is saved on the CarePlanItem.
 3. **Recurrence → events**, from `start_date` to `end_date` inclusive:
 
 | `recurrence` | Events |
@@ -239,6 +259,7 @@ On approve, in this order:
 | `POST /caregivers/{id}/reinvite` | ✓ | ✓ | ✓ | — |
 | `GET /caregivers/{id}/view` | ✓ | — | — | that caregiver only |
 | `PATCH /patients/{id}/journey-state`, `POST /patients/{id}/mark-reviewed`, `POST /careplan/draft`, `PUT /careplan/draft/{id}`, `POST /careplan/draft/{id}/approve`, `POST /demo/advance-day`, `POST /demo/reset` | ✓ | — | — | — |
+| `POST /whatsapp/send-checklist/{id}` (in `whatsapp/`; or `X-Cron-Secret`, see §2) | ✓ | ✓ | — | — |
 
 ### Caregiver minimized view — `GET /caregivers/{id}/view`
 
@@ -313,6 +334,8 @@ Every audit entry has `actor_id`, `actor_role`, `action`, `entity_type`, `entity
 | `caregiver_consent_revoked` | caregiver | → REVOKED |
 | `caregiver_reinvited` | caregiver | REVOKED → PENDING |
 | `caregiver_view_accessed` | caregiver | Caregiver view opened |
+| `caregivers_notified` | patient | SOS alert sent to caregivers (`after.names`, `after.channel`); written by `whatsapp/` with actor role `system`; also drives the 60-second de-dupe |
+| `whatsapp_checklist_sent` | patient | WhatsApp checklist sent (`after.event_ids` = the numbered order the patient saw, used to match "1 done, 3 missed" replies for 24h); written by `whatsapp/` |
 
 ---
 
