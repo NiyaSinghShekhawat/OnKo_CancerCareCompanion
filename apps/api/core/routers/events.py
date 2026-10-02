@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor, require, require_patient_access
+from core.auth import demo_routes_enabled, get_actor, require, require_patient_access
 from core.models import CareEvent, Patient
 from core.serialize import event_for
 from core.services import audit, checklist, attention, journey_state
@@ -46,7 +46,7 @@ def today(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
             "paused": paused, "reason": f"Journey state {p.journey_state}" if paused else None}
 
 
-@router.post("/demo/advance-day")
+@router.post("/demo/advance-day", dependencies=[Depends(demo_routes_enabled)])
 def advance_day(db=Depends(get_db), actor=Depends(get_actor)):
     require(actor, "doctor")   # changes every patient's events and attention, like /demo/reset
     now = utcnow()
@@ -57,7 +57,7 @@ def advance_day(db=Depends(get_db), actor=Depends(get_actor)):
     return {"marked_no_response": len(stale)}
 
 
-@router.post("/demo/reset")
+@router.post("/demo/reset", dependencies=[Depends(demo_routes_enabled)])
 def reset_demo(db=Depends(get_db), actor=Depends(get_actor)):
     require(actor, "doctor")
     seed.run(db)

@@ -1,5 +1,12 @@
 """Demo auth: role + user id come from headers. Good enough for a prototype, clearly labeled.
-Both headers are required; there is no default user."""
+Both headers are required; there is no default user.
+
+Deployment switches (read on every request, so tests and redeploys need no code change):
+  DEMO_ACCESS_CODE     set → every request through get_actor must send X-Access-Code equal to it. Unset/empty → no check.
+  DEMO_ROUTES_ENABLED  "false"/"0"/"no"/"off" → POST /demo/reset and /demo/advance-day answer 404. Default: enabled."""
+import hmac
+import os
+
 from fastapi import Depends, Header, HTTPException
 from core.db import get_db
 
@@ -11,9 +18,23 @@ class Actor:
         self.role, self.user_id = role, user_id
 
 
+def _check_access_code(sent: str | None):
+    expected = os.getenv("DEMO_ACCESS_CODE") or ""
+    if expected and not hmac.compare_digest((sent or "").encode(), expected.encode()):
+        raise HTTPException(401, "Access code required")
+
+
+def demo_routes_enabled():
+    """Route dependency for /demo/*: hides them (404) when DEMO_ROUTES_ENABLED is off."""
+    if (os.getenv("DEMO_ROUTES_ENABLED") or "true").strip().lower() in {"false", "0", "no", "off"}:
+        raise HTTPException(404, "Not Found")
+
+
 def get_actor(x_role: str | None = Header(None), x_user_id: str | None = Header(None),
-              db=Depends(get_db)) -> Actor:
-    """HTTP callers only. Internal callers (whatsapp/) build Actor(...) directly and skip this."""
+              x_access_code: str | None = Header(None), db=Depends(get_db)) -> Actor:
+    """HTTP callers only. Internal callers (whatsapp/) build Actor(...) directly and skip this,
+    including the access-code check."""
+    _check_access_code(x_access_code)
     if not x_role or not x_user_id:
         raise HTTPException(401, "Missing X-Role / X-User-Id")
     if x_role not in {"doctor", "patient", "caregiver", "care_team"}:

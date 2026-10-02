@@ -44,6 +44,17 @@ All commands run from `apps/api/`.
 
 Database: `DATABASE_URL` (default `sqlite:///./onko.db`). Seed dates are relative to the moment of seeding, so after a reset "today" is today.
 
+### Deployment
+
+Two environment variables (see `.env.example`) make a deployed demo safer. Both are read on every request, so changing them only needs a restart to reload `.env`, no code change.
+
+| Variable | Default | Effect when set |
+|---|---|---|
+| `DEMO_ACCESS_CODE` | unset (empty = unset) | Every request that goes through core auth must also send `X-Access-Code: <value>`, else **401 `Access code required`**. This is checked before the role/user headers, so a wrong code reveals nothing about users. |
+| `DEMO_ROUTES_ENABLED` | `true` | `false` / `0` / `no` / `off` → `POST /demo/reset` and `POST /demo/advance-day` answer **404** before any auth, so nobody can wipe or advance a deployed demo. |
+
+Not covered by the access code, because they don't go through core auth: `/docs`, `/openapi.json`, `POST /whatsapp/webhook` (Twilio can't send custom headers) and `POST /whatsapp/send-checklist/{id}` (in `whatsapp/`). WhatsApp's internal calls into core build their actor directly and are unaffected. The web app must add `X-Access-Code` to every request when the code is set. Tests force both switches off in `tests/conftest.py`, whatever your `.env` says.
+
 ---
 
 ## 3. Demo identities
@@ -186,6 +197,7 @@ On approve, in this order:
 
 | Situation | Response |
 |---|---|
+| `DEMO_ACCESS_CODE` is set and `X-Access-Code` is missing or wrong (checked first; see §2 Deployment) | 401 `Access code required` |
 | `X-Role` or `X-User-Id` missing or empty | 401 `Missing X-Role / X-User-Id` |
 | `X-Role` not one of doctor, care_team, patient, caregiver | 400 `Unknown role` |
 | Id not found for that role (doctor/care_team must be in `users` **with that role**; patient in `patients`; caregiver in `caregivers`, any consent status) | 401 `Unknown user for role` |
@@ -290,7 +302,7 @@ Every audit entry has `actor_id`, `actor_role`, `action`, `entity_type`, `entity
 ## 12. Known limitations
 
 - **"Today" is the UTC calendar day** everywhere in core (checklist, dashboard `consultations_today`, open-today items). For users in India (UTC+5:30), anything before 05:30 IST counts as the previous day. Stored datetimes are naive UTC.
-- **Demo auth is header-based, not a real login.** Anyone who knows a valid id can send it as a header; there are no passwords, tokens or sessions.
+- **Demo auth is header-based, not a real login.** Anyone who knows a valid id can send it as a header; there are no passwords, tokens or sessions. `DEMO_ACCESS_CODE` keeps strangers out of a deployed demo, but it is one shared code for everyone, not a per-user login.
 - **Events from before a relapse stay scheduled** until the doctor changes the plan. A relapse starts a new chapter but does not cancel chapter-1 events that are still UPCOMING; they keep appearing in the checklist and timeline.
 - **Rules run on events, not on a clock.** The FOLLOW_UP streak, the open-query >24h rule and re-raising unreviewed reports only run on `POST /demo/advance-day`; there is no background scheduler.
 - **Caregivers invited after seeding get random ids**; only the seeded ones are fixed.
