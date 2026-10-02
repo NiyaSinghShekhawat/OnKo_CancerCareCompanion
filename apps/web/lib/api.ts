@@ -134,9 +134,9 @@ export const api = {
     USE_MOCKS ? mock<Report>({ id, reviewed: true } as Report)
       : req<Report>(`/reports/${id}/reviewed`, { method: "PATCH" }, { role: "doctor", userId: "doc_mehta" }),
 
-  setEventStatus: (id: string, status: EventStatus) =>
+  setEventStatus: (id: string, status: EventStatus, actor?: ActorRef) =>
     USE_MOCKS ? mock<CareEvent>({ id, status } as CareEvent)
-      : req<CareEvent>(`/events/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+      : req<CareEvent>(`/events/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }, actor),
 
   updateAttention: (
     id: string,
@@ -146,20 +146,20 @@ export const api = {
     USE_MOCKS ? mock<AttentionItem>({ id, ...patch } as AttentionItem)
       : req<AttentionItem>(`/attention/${id}`, { method: "PATCH", body: JSON.stringify(patch) }, actor),
 
-  sendQuery: (patient_id: string, text: string) =>
+  sendQuery: (patient_id: string, text: string, actor?: ActorRef) =>
     USE_MOCKS ? mock<PatientQuery>({})
-      : req<PatientQuery>("/queries", { method: "POST", body: JSON.stringify({ patient_id, text, channel: "app" }) }),
+      : req<PatientQuery>("/queries", { method: "POST", body: JSON.stringify({ patient_id, text, channel: "app" }) }, actor),
 
   acceptCaregiver: (id: string) =>
     req<Caregiver>(`/caregivers/${id}/accept`, { method: "POST" }, { role: "caregiver", userId: id }),
-  revokeCaregiver: (id: string) =>
-    req<Caregiver>(`/caregivers/${id}/revoke`, { method: "POST" }),
-  reinviteCaregiver: (id: string) =>
-    req<Caregiver>(`/caregivers/${id}/reinvite`, { method: "POST" }),
-  updateCaregiverPermissions: (id: string, permissions: Caregiver["permissions"]) =>
-    req<Caregiver>(`/caregivers/${id}`, { method: "PATCH", body: JSON.stringify({ permissions }) }),
+  revokeCaregiver: (id: string, actor?: ActorRef) =>
+    req<Caregiver>(`/caregivers/${id}/revoke`, { method: "POST" }, actor),
+  reinviteCaregiver: (id: string, actor?: ActorRef) =>
+    req<Caregiver>(`/caregivers/${id}/reinvite`, { method: "POST" }, actor),
+  updateCaregiverPermissions: (id: string, permissions: Caregiver["permissions"], actor?: ActorRef) =>
+    req<Caregiver>(`/caregivers/${id}`, { method: "PATCH", body: JSON.stringify({ permissions }) }, actor),
 
-  sos: (patient_id: string) =>
+  sos: (patient_id: string, actor?: ActorRef) =>
     USE_MOCKS ? mock<AttentionItem>({})
-      : req<AttentionItem>("/sos", { method: "POST", body: JSON.stringify({ patient_id, channel: "app" }) }),
+      : req<AttentionItem>("/sos", { method: "POST", body: JSON.stringify({ patient_id, channel: "app" }) }, actor),
 };
