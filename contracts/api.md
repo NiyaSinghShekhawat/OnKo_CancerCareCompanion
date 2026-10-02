@@ -39,7 +39,7 @@ Shapes of every entity live in `schemas.json`. AI output shapes live in `ai_outp
 |---|---|---|
 | GET | `/attention` | `AttentionItem[]` (doctor/care-team panel); optional `?assigned_to=` `?label=` `?patient_id=` `?status=` (CLOSED left out unless `?status=CLOSED`) |
 | GET | `/attention/mine` | `AttentionItem[]` assigned to the caller (doctor/care-team) |
-| PATCH | `/attention/{id}` | body `{ status, assigned_to? }` → `AttentionItem` |
+| PATCH | `/attention/{id}` | body `{ status?, assigned_to? }` → `AttentionItem` |
 | GET | `/dashboard/overview` | `DashboardOverview` (stats cards) |
 
 ## Queries — owner: Samprada routes, Shreyan AI (`core/routers/queries.py`)
