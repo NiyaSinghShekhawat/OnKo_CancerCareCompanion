@@ -11,13 +11,14 @@ export interface Patient {
   id: string; name: string; age: number; gender: string; abha_id: string | null;
   phone_whatsapp: string; preferred_language: string; diagnosis_label: string;
   regimen_label: string; cycle_current: number; cycle_total: number;
-  journey_state: JourneyState; doctor_id: string; last_reviewed_at: string | null; created_at: string;
+  journey_state: JourneyState; journey_state_changed_at: string | null; previous_journey_state: JourneyState | null;
+  journey_chapter: number; doctor_id: string; last_reviewed_at: string | null; created_at: string;
 }
 
 export interface CareEvent {
   id: string; patient_id: string; type: EventType; title: string; details: Record<string, string>;
   scheduled_at: string; status: EventStatus; response_state: string | null; responded_at: string | null;
-  source: string; care_plan_item_id: string | null;
+  source: string; care_plan_item_id: string | null; journey_chapter: number;
 }
 
 export interface CarePlanItem {
@@ -59,6 +60,20 @@ export interface Caregiver {
   permissions: { view_journey: boolean; upload_reports: boolean; receive_escalations: boolean };
 }
 
+export interface MinimizedCareEvent {
+  id: string; type: EventType; title: string; scheduled_at: string; status: EventStatus;
+}
+
+export interface CaregiverView {
+  patient: {
+    id: string; name: string; journey_state: JourneyState; preferred_language: string;
+  };
+  upcoming: MinimizedCareEvent[];
+  recent: MinimizedCareEvent[];
+  can_upload_reports: boolean;
+  receives_escalations: boolean;
+}
+
 export interface ReviewSummary { ok: boolean; since: string | null; bullets: string[]; upcoming: string[]; }
 
 export interface Patient360 {
@@ -66,7 +81,10 @@ export interface Patient360 {
   reports: Report[]; caregivers: Caregiver[]; attention: AttentionItem[]; since_last_review: ReviewSummary;
 }
 
-export interface DailyChecklist { patient_id: string; date: string; items: CareEvent[]; window_closes_at: string; sent: boolean; }
+export interface DailyChecklist {
+  patient_id: string; date: string; items: CareEvent[]; window_closes_at: string; sent: boolean;
+  paused: boolean; reason: string | null;
+}
 
 export interface DashboardOverview {
   active_patients: number; consultations_today: number; missed_activities: number;

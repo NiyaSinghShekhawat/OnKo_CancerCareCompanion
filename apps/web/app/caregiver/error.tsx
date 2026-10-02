@@ -1,1 +1,12 @@
-"use client";import {CircleAlert,RotateCcw} from "lucide-react";export default function Error({reset}:{error:Error&{digest?:string};reset:()=>void}){return <div className="grid min-h-[70vh] place-items-center bg-[#F4F6F5] p-6"><div className="w-full max-w-lg rounded-3xl bg-white p-8 text-center shadow-sm"><CircleAlert className="mx-auto text-onko-amber" size={30}/><h1 className="mt-4 text-[24px] font-bold">This view could not be loaded</h1><p className="mt-2 text-[14px] leading-6 text-onko-muted">Your recorded data has not been changed. Try loading the view again.</p><button onClick={reset} className="onko-button-primary mt-5"><RotateCcw size={16}/>Try again</button></div></div>}
+"use client";
+import ApiErrorView from "@/components/ApiErrorView";
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return <ApiErrorView error={error} reset={reset} />;
+}

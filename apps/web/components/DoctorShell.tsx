@@ -1,8 +1,9 @@
 "use client";
-import {useState} from "react";
+import {useEffect,useState} from "react";
 import Link from "next/link";
 import { Bell, CalendarDays, ClipboardList, FileText, LayoutDashboard, MessageSquareText, Search, ShieldCheck, Users, UsersRound } from "lucide-react";
 import SafetyNote from "./SafetyNote";
+import { setActor } from "@/lib/api";
 
 const nav=[
   {href:"/doctor",label:"Overview",icon:LayoutDashboard},
@@ -15,7 +16,7 @@ const nav=[
   {href:"/doctor/team",label:"My Team",icon:UsersRound},
 ];
 
-export default function DoctorShell({children}:{children:React.ReactNode}){const [search,setSearch]=useState(""),[notifs,setNotifs]=useState(false);return <div className="min-h-screen bg-onko-canvas text-onko-ink">
+export default function DoctorShell({children}:{children:React.ReactNode}){const [search,setSearch]=useState(""),[notifs,setNotifs]=useState(false);useEffect(()=>setActor("doctor","doc_mehta"),[]);return <div className="min-h-screen bg-onko-canvas text-onko-ink">
 <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-onko-teal">Skip to content</a><aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] border-r border-onko-line bg-white xl:flex xl:flex-col">
 <Link href="/" className="flex h-[82px] items-center gap-3 border-b border-onko-line px-5"><span className="grid h-11 w-11 place-items-center rounded-xl bg-onko-teal text-base font-bold text-white">O</span><div><div className="text-[21px] font-bold leading-tight text-onko-teal">OnKo</div><div className="text-[12px] font-semibold uppercase tracking-[.12em] text-onko-muted">Oncology Care</div></div></Link>
 <div className="border-b border-onko-line px-4 py-5"><p className="text-[12px] font-bold uppercase tracking-[.12em] text-onko-muted">Active perspective</p><div className="mt-2 grid grid-cols-3 rounded-xl bg-onko-softteal p-1 text-center text-[13px] font-semibold"><span className="rounded-lg bg-white px-2 py-2.5 text-onko-teal shadow-sm">Doctor</span><Link href="/patient" className="px-2 py-2.5 text-onko-muted">Patient</Link><Link href="/caregiver" className="px-2 py-2.5 text-onko-muted">Caregiver</Link></div></div>

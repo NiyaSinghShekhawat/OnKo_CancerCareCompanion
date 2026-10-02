@@ -1,12 +1,163 @@
 "use client";
-import {useState} from "react";
-import {Clock3,Link2,ShieldCheck,UserRoundCheck,UserRoundX} from "lucide-react";
-import type {Caregiver} from "@/lib/types";
-export default function CaregiverLifecycle({caregiver}:{caregiver:Caregiver}){
- const [state,setState]=useState<Caregiver["consent_status"]>(caregiver.consent_status),[temporary,setTemporary]=useState(false);
- return <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="onko-eyebrow">Caregiver lifecycle</p><h2 className="mt-1 text-[22px] font-bold">Invitation & access state</h2><p className="mt-1 text-[13px] text-onko-muted">Patient-controlled prototype states for invitation, consent and revocation.</p></div><span className={"rounded-full px-3 py-1.5 text-[12px] font-bold "+(state==="GRANTED"?"bg-onko-softteal text-onko-teal":state==="PENDING"?"bg-onko-amberbg text-onko-amber":"bg-red-50 text-onko-sos")}>{state}</span></div>
- <div className="mt-5 grid gap-3 sm:grid-cols-3"><State icon={<Link2 size={18}/>} title="Invited" active={state==="PENDING"}/><State icon={<UserRoundCheck size={18}/>} title="Consent granted" active={state==="GRANTED"}/><State icon={<UserRoundX size={18}/>} title="Access revoked" active={state==="REVOKED"}/></div>
- <div className="mt-5 flex flex-wrap gap-2"><button onClick={()=>setState("PENDING")} className="onko-button-secondary">Preview pending</button><button onClick={()=>setState("GRANTED")} className="onko-button-secondary">Preview granted</button><button onClick={()=>setState("REVOKED")} className="onko-button-secondary text-onko-sos">Preview revoked</button></div>
- <div className="mt-5 rounded-2xl bg-onko-surface p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex gap-3"><Clock3 className="mt-0.5 text-onko-teal" size={19}/><div><strong className="text-[14px]">Temporary caregiver access</strong><p className="mt-1 text-[12px] text-onko-muted">Prototype an access window without changing the permanent caregiver.</p></div></div><button onClick={()=>setTemporary(v=>!v)} className="onko-button-secondary">{temporary?"End temporary access":"Enable temporary access"}</button></div>{temporary&&<p className="mt-3 rounded-xl bg-white p-3 text-[12px] text-onko-muted">Temporary access preview active · expiry would be enforced by the backend consent service.</p>}</div>
- <div className="mt-4 flex gap-3 rounded-xl bg-onko-softteal/60 p-4"><ShieldCheck size={18} className="shrink-0 text-onko-teal"/><p className="text-[12px] leading-5 text-onko-muted">These controls are UI-only. A caregiver can never grant themselves access; persisted consent must come from the patient.</p></div></section>}
-function State({icon,title,active}:{icon:React.ReactNode;title:string;active:boolean}){return <div className={"rounded-2xl border p-4 "+(active?"border-onko-teal bg-onko-softteal":"border-onko-line bg-white")}><span className={active?"text-onko-teal":"text-onko-muted"}>{icon}</span><p className="mt-3 text-[13px] font-bold">{title}</p></div>}
+
+import { useState } from "react";
+import { CheckCircle2, Link2, ShieldCheck, UserRoundCheck, UserRoundX } from "lucide-react";
+import type { Caregiver } from "@/lib/types";
+import { api } from "@/lib/api";
+
+export default function CaregiverLifecycle({
+  caregiver,
+  mode = "patient",
+}: {
+  caregiver: Caregiver;
+  mode?: "patient" | "caregiver";
+}) {
+  const [state, setState] = useState<Caregiver["consent_status"]>(caregiver.consent_status);
+  const [perms, setPerms] = useState(caregiver.permissions);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function moveConsent(action: "accept" | "revoke" | "reinvite") {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated =
+        action === "accept"
+          ? await api.acceptCaregiver(caregiver.id)
+          : action === "revoke"
+            ? await api.revokeCaregiver(
+                caregiver.id,
+                mode === "caregiver"
+                  ? { role: "caregiver", userId: caregiver.id }
+                  : { role: "patient", userId: caregiver.patient_id },
+              )
+            : await api.reinviteCaregiver(caregiver.id, { role: "patient", userId: caregiver.patient_id });
+      setState(updated.consent_status);
+      setMessage(
+        updated.consent_status === "GRANTED"
+          ? "Caregiver consent is active."
+          : updated.consent_status === "PENDING"
+            ? "A new invitation is pending caregiver acceptance."
+            : "Caregiver access has been revoked.",
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to update caregiver consent");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function savePermissions() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await api.updateCaregiverPermissions(
+        caregiver.id,
+        perms,
+        { role: "patient", userId: caregiver.patient_id },
+      );
+      setPerms(updated.permissions);
+      setMessage("Caregiver permissions updated.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to update caregiver permissions");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="onko-eyebrow">Caregiver lifecycle</p>
+          <h2 className="mt-1 text-[22px] font-bold">Invitation & consent</h2>
+          <p className="mt-1 text-[13px] text-onko-muted">
+            Consent changes are persisted through the caregiver consent endpoints.
+          </p>
+        </div>
+        <span
+          className={
+            "rounded-full px-3 py-1.5 text-[12px] font-bold " +
+            (state === "GRANTED"
+              ? "bg-onko-softteal text-onko-teal"
+              : state === "PENDING"
+                ? "bg-onko-amberbg text-onko-amber"
+                : "bg-red-50 text-onko-sos")
+          }
+        >
+          {state}
+        </span>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <State icon={<Link2 size={18} />} title="Invited" active={state === "PENDING"} />
+        <State icon={<UserRoundCheck size={18} />} title="Consent granted" active={state === "GRANTED"} />
+        <State icon={<UserRoundX size={18} />} title="Access revoked" active={state === "REVOKED"} />
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {mode === "caregiver" && state === "PENDING" && (
+          <button disabled={busy} onClick={() => void moveConsent("accept")} className="onko-button-primary disabled:opacity-50">
+            <CheckCircle2 size={16} />
+            Accept invitation
+          </button>
+        )}
+        {state === "GRANTED" && (
+          <button disabled={busy} onClick={() => void moveConsent("revoke")} className="onko-button-secondary text-onko-sos disabled:opacity-50">
+            Revoke caregiver access
+          </button>
+        )}
+        {mode === "patient" && state === "REVOKED" && (
+          <button disabled={busy} onClick={() => void moveConsent("reinvite")} className="onko-button-primary disabled:opacity-50">
+            Re-invite caregiver
+          </button>
+        )}
+      </div>
+
+      {mode === "patient" && (
+        <div className="mt-6 rounded-2xl bg-onko-surface p-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={18} className="text-onko-teal" />
+            <strong className="text-[14px]">Shared permissions</strong>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {([
+              ["View journey", "view_journey"],
+              ["Upload reports", "upload_reports"],
+              ["Receive escalations", "receive_escalations"],
+            ] as const).map(([label, key]) => (
+              <button
+                key={key}
+                onClick={() => setPerms({ ...perms, [key]: !perms[key] })}
+                className={
+                  "rounded-xl border p-3 text-left text-[13px] font-semibold " +
+                  (perms[key] ? "border-onko-teal bg-onko-softteal text-onko-teal" : "border-onko-line bg-white")
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button disabled={busy} onClick={() => void savePermissions()} className="onko-button-secondary mt-3 disabled:opacity-50">
+            Save permissions
+          </button>
+        </div>
+      )}
+
+      {message && <p className="mt-4 rounded-xl bg-onko-softteal p-3 text-[13px] font-semibold text-onko-teal">{message}</p>}
+      {error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-[13px] text-onko-sos">{error}</p>}
+    </section>
+  );
+}
+
+function State({ icon, title, active }: { icon: React.ReactNode; title: string; active: boolean }) {
+  return (
+    <div className={"rounded-2xl border p-4 " + (active ? "border-onko-teal bg-onko-softteal" : "border-onko-line bg-white")}>
+      <span className={active ? "text-onko-teal" : "text-onko-muted"}>{icon}</span>
+      <p className="mt-3 text-[13px] font-bold">{title}</p>
+    </div>
+  );
+}
