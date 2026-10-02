@@ -7,14 +7,17 @@
     "abha_id": "91-1234-5678-9012",
     "phone_whatsapp": "whatsapp:+910000000000",
     "preferred_language": "Hindi",
-    "diagnosis_label": "Stage III Colorectal Adenocarcinoma",
+    "diagnosis_label": "Stage III Colorectal Adenocarcinoma (as recorded)",
     "regimen_label": "CAPOX",
     "cycle_current": 4,
     "cycle_total": 8,
     "journey_state": "ACTIVE_TREATMENT",
     "doctor_id": "doc_mehta",
     "last_reviewed_at": "2026-09-24T09:00:00",
-    "created_at": "2026-09-30T08:54:25.692794"
+    "created_at": "2026-09-30T08:54:25.692794",
+    "journey_state_changed_at": null,
+    "previous_journey_state": null,
+    "journey_chapter": 1
   },
   "care_plan": [],
   "timeline": [
@@ -29,7 +32,8 @@
       "response_state": "COMPLETED",
       "responded_at": null,
       "source": "doctor",
-      "care_plan_item_id": null
+      "care_plan_item_id": null,
+      "journey_chapter": 1
     },
     {
       "id": "52f5e6f26316",
@@ -46,7 +50,8 @@
       "response_state": "REPORTED_MISSED",
       "responded_at": null,
       "source": "doctor",
-      "care_plan_item_id": null
+      "care_plan_item_id": null,
+      "journey_chapter": 1
     },
     {
       "id": "baf7ddb7efe3",
@@ -62,7 +67,8 @@
       "response_state": null,
       "responded_at": null,
       "source": "doctor",
-      "care_plan_item_id": null
+      "care_plan_item_id": null,
+      "journey_chapter": 1
     },
     {
       "id": "4f95a01895c8",
@@ -75,7 +81,8 @@
       "response_state": null,
       "responded_at": null,
       "source": "doctor",
-      "care_plan_item_id": null
+      "care_plan_item_id": null,
+      "journey_chapter": 1
     },
     {
       "id": "c1b7fd2fda78",
@@ -92,7 +99,8 @@
       "response_state": null,
       "responded_at": null,
       "source": "doctor",
-      "care_plan_item_id": null
+      "care_plan_item_id": null,
+      "journey_chapter": 1
     },
     {
       "id": "e95adb5c5e92",
@@ -105,7 +113,8 @@
       "response_state": null,
       "responded_at": null,
       "source": "doctor",
-      "care_plan_item_id": null
+      "care_plan_item_id": null,
+      "journey_chapter": 1
     }
   ],
   "open_queries": [
@@ -144,7 +153,7 @@
   ],
   "caregivers": [
     {
-      "id": "2162fe1b1ec0",
+      "id": "cg_sunita",
       "patient_id": "p_rajesh",
       "name": "Sunita Kumar",
       "relation": "Wife",

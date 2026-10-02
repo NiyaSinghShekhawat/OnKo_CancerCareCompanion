@@ -16,7 +16,8 @@
       "response_state": null,
       "responded_at": null,
       "source": "doctor",
-      "care_plan_item_id": null
+      "care_plan_item_id": null,
+      "journey_chapter": 1
     },
     {
       "id": "4f95a01895c8",
@@ -29,7 +30,8 @@
       "response_state": null,
       "responded_at": null,
       "source": "doctor",
-      "care_plan_item_id": null
+      "care_plan_item_id": null,
+      "journey_chapter": 1
     },
     {
       "id": "c1b7fd2fda78",
@@ -46,9 +48,12 @@
       "response_state": null,
       "responded_at": null,
       "source": "doctor",
-      "care_plan_item_id": null
+      "care_plan_item_id": null,
+      "journey_chapter": 1
     }
   ],
   "window_closes_at": "2026-10-01T00:00:00",
-  "sent": false
+  "sent": false,
+  "paused": false,
+  "reason": null
 }

@@ -2,10 +2,10 @@ import Link from "next/link";
 import { ArrowRight, Download, Search, ShieldCheck } from "lucide-react";
 import DoctorShell from "@/components/DoctorShell";
 import EnrollPatientPrototype from "@/components/EnrollPatientPrototype";
-import { api } from "@/lib/api";
+import { serverApi } from "@/lib/server-api";
 export const dynamic="force-dynamic";
 export default async function Registry(){
- const patients=await api.patients();
+ const patients=await serverApi.patients();
  return <DoctorShell>
   <div className="flex flex-wrap items-end justify-between gap-5"><div><p className="text-[13px] font-bold uppercase tracking-[.12em] text-onko-teal">Longitudinal registry · Active safer harbor protocol</p><h1 className="mt-2 text-[46px] font-bold tracking-[-.035em]">Patient Registry</h1><p className="mt-1 text-[16px] text-onko-muted">Longitudinal oncology care cohorts and active journey tracking.</p></div><div className="flex gap-2"><button className="onko-button-secondary"><Download size={15}/>Export cohort CSV</button><EnrollPatientPrototype/></div></div>
   <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4"><div className="onko-card p-4"><p className="text-[12px] font-bold uppercase text-onko-muted">Active treatment</p><p className="mt-2 text-[36px] font-bold text-onko-teal">{patients.length}</p></div><div className="onko-card p-4"><p className="text-[12px] font-bold uppercase text-onko-muted">Registry total</p><p className="mt-2 text-[36px] font-bold">{patients.length}</p></div><div className="onko-card p-4"><p className="text-[12px] font-bold uppercase text-onko-muted">Action escalations</p><p className="mt-2 text-[36px] font-bold text-onko-amber">—</p></div><div className="onko-card p-4"><p className="text-[12px] font-bold uppercase text-onko-muted">Cohort adherence</p><p className="mt-2 text-[36px] font-bold">—</p></div></div>
