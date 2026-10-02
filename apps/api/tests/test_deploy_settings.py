@@ -80,6 +80,44 @@ def test_docs_stay_reachable(code_on):
     assert c.get("/openapi.json").status_code == 200
 
 
+# ---------- get_actor called positionally (whatsapp/webhook.py staff_or_cron: get_actor(x_role, x_user_id, db)) ----------
+
+def test_get_actor_positional_order_is_role_user_db():
+    import inspect
+    from core.auth import get_actor
+    assert list(inspect.signature(get_actor).parameters)[:3] == ["x_role", "x_user_id", "db"]
+
+
+def test_get_actor_positional_call_works():
+    from fastapi import HTTPException
+    from core.auth import get_actor
+    from core.db import SessionLocal
+    db = SessionLocal()
+    try:
+        actor = get_actor("doctor", "doc_mehta", db)
+        assert (actor.role, actor.user_id) == ("doctor", "doc_mehta")
+        with pytest.raises(HTTPException) as e:
+            get_actor("doctor", "nobody", db)
+        assert e.value.status_code == 401 and e.value.detail == "Unknown user for role"
+    finally:
+        db.close()
+
+
+def test_get_actor_positional_call_with_access_code_on_is_a_clean_401(code_on):
+    """Not passing the code positionally leaves FastAPI's Header marker as the value: must be 401, not a crash."""
+    from fastapi import HTTPException
+    from core.auth import get_actor
+    from core.db import SessionLocal
+    db = SessionLocal()
+    try:
+        with pytest.raises(HTTPException) as e:
+            get_actor("doctor", "doc_mehta", db)
+        assert e.value.status_code == 401 and e.value.detail == "Access code required"
+        assert get_actor("doctor", "doc_mehta", db, CODE).role == "doctor"
+    finally:
+        db.close()
+
+
 # ---------- DEMO_ROUTES_ENABLED ----------
 
 @pytest.mark.parametrize("value", ["false", "FALSE", "0", "no", "off", " False "])

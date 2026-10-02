@@ -18,9 +18,11 @@ class Actor:
         self.role, self.user_id = role, user_id
 
 
-def _check_access_code(sent: str | None):
+def _check_access_code(sent):
     expected = os.getenv("DEMO_ACCESS_CODE") or ""
-    if expected and not hmac.compare_digest((sent or "").encode(), expected.encode()):
+    # A direct Python call that doesn't pass the code leaves FastAPI's Header(None) marker here, not a str.
+    sent = sent if isinstance(sent, str) else ""
+    if expected and not hmac.compare_digest(sent.encode(), expected.encode()):
         raise HTTPException(401, "Access code required")
 
 
@@ -31,9 +33,10 @@ def demo_routes_enabled():
 
 
 def get_actor(x_role: str | None = Header(None), x_user_id: str | None = Header(None),
-              x_access_code: str | None = Header(None), db=Depends(get_db)) -> Actor:
-    """HTTP callers only. Internal callers (whatsapp/) build Actor(...) directly and skip this,
-    including the access-code check."""
+              db=Depends(get_db), x_access_code: str | None = Header(None)) -> Actor:
+    """Parameter order is part of the API: some callers use get_actor(x_role, x_user_id, db) positionally
+    (whatsapp/webhook.py's staff_or_cron), so new parameters go at the end.
+    Internal callers that build Actor(...) directly skip this, including the access-code check."""
     _check_access_code(x_access_code)
     if not x_role or not x_user_id:
         raise HTTPException(401, "Missing X-Role / X-User-Id")
