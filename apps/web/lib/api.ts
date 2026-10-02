@@ -1,7 +1,7 @@
 // The ONLY place that talks to the backend. Toggle mocks with NEXT_PUBLIC_USE_MOCKS.
 import type {
   Patient, AttentionItem, DashboardOverview, Patient360, DailyChecklist, CarePlanDraft,
-  CarePlanItem, CopilotItem, CareEvent, EventStatus, PatientQuery, Role,
+  CarePlanItem, CarePlanItemPatch, CarePlanDeleteResult, CopilotItem, CareEvent, EventStatus, PatientQuery, Role,
 } from "./types";
 import patientsMock from "@/mocks/patients.json";
 import attentionMock from "@/mocks/attention.json";
@@ -37,6 +37,13 @@ export const api = {
   checklistToday: (id: string) => USE_MOCKS ? mock<DailyChecklist>(checklistMock) : req<DailyChecklist>(`/patients/${id}/checklist/today`),
 
   carePlan: (id: string) => USE_MOCKS ? mock<CarePlanItem[]>((p360Mock as Patient360).care_plan) : req<CarePlanItem[]>(`/patients/${id}/careplan`),
+
+  updateCarePlanItem: (id: string, patch: CarePlanItemPatch) =>
+    USE_MOCKS ? mock<CarePlanItem>({ ...((p360Mock as Patient360).care_plan.find(x => x.id === id) as CarePlanItem), ...patch })
+      : req<CarePlanItem>(`/careplan/items/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteCarePlanItem: (id: string) =>
+    USE_MOCKS ? mock<CarePlanDeleteResult>({ id, patient_id: "", removed: true, future_events_removed: 0, historical_events_preserved: 0 })
+      : req<CarePlanDeleteResult>(`/careplan/items/${id}`, { method: "DELETE" }),
 
   createDraft: (patient_id: string, raw_text: string) =>
     USE_MOCKS ? mock<CarePlanDraft>(draftMock)
