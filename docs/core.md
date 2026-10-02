@@ -53,6 +53,23 @@ Two environment variables (see `.env.example`) make a deployed demo safer. Both 
 | `DEMO_ACCESS_CODE` | unset (empty = unset) | Every request that goes through core auth must also send `X-Access-Code: <value>`, else **401 `Access code required`**. This is checked before the role/user headers, so a wrong code reveals nothing about users. |
 | `DEMO_ROUTES_ENABLED` | `true` | `false` / `0` / `no` / `off` → `POST /demo/reset` and `POST /demo/advance-day` answer **404** before any auth, so nobody can wipe or advance a deployed demo. |
 
+#### Supabase (Postgres)
+
+Core runs on SQLite (local dev, tests) and Postgres (Supabase) with the same code. Only `DATABASE_URL` changes.
+
+1. In Supabase, create a project in the **South Asia (Mumbai)** region (`ap-south-1`), closest to the demo's users. Keep the database password.
+2. Open **Connect → Connection string** and pick **Session pooler** (port 5432; reachable over IPv4).
+3. Write the URL with the psycopg driver and put it in the repo-root `.env`:
+   ```
+   DATABASE_URL=postgresql+psycopg://postgres.<project-ref>:<password>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
+   ```
+   Copy the host and `postgres.<project-ref>` user exactly as Supabase shows them. URL-encode special characters in the password (`@` → `%40`, `#` → `%23`, `/` → `%2F`). A plain `postgresql://…` URL also works: core rewrites it to `postgresql+psycopg://`.
+4. Install the driver with the rest: `pip install -r requirements.txt` (includes `psycopg[binary]`).
+5. From `apps/api`, run **`python -m core.seed` once**. It creates the tables and loads the demo data; it drops core's tables first, so don't run it against data you want to keep. After that, reset with `POST /demo/reset` like on SQLite.
+6. Start the API as usual. Postgres connections use `pool_pre_ping`, so connections the pooler closed while idle are replaced instead of failing. On later model changes `init_db()` adds new columns with a standard `ALTER TABLE … ADD COLUMN` (no SQLite PRAGMAs), so no manual migration is needed for added columns.
+
+Tests always use SQLite (`test_onko.db`), never Supabase.
+
 Not covered by the access code, because they don't go through core auth: `/docs`, `/openapi.json`, `POST /whatsapp/webhook` (Twilio can't send custom headers) and `POST /whatsapp/send-checklist/{id}` (in `whatsapp/`). WhatsApp's internal calls into core build their actor directly and are unaffected. The web app must add `X-Access-Code` to every request when the code is set. Tests force both switches off in `tests/conftest.py`, whatever your `.env` says.
 
 ---
