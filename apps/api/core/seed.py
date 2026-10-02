@@ -41,6 +41,7 @@ def _load(db):
         m.User(id="doc_mehta", name="Dr. Mehta", role="doctor"),
         m.User(id="nurse_anita", name="Nurse Anita", role="care_team"),
     ])
+    db.flush()   # patients.doctor_id references users; Postgres enforces it, so users must exist first
 
     rajesh = m.Patient(id="p_rajesh", name="Rajesh Kumar", age=54, gender="M", abha_id="91-1234-5678-9012",
                        phone_whatsapp=os.getenv("DEMO_PATIENT_WHATSAPP", "whatsapp:+910000000000"),

@@ -27,6 +27,8 @@ def list_cg(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
 @router.post("/patients/{pid}/caregivers")
 def invite(pid: str, body: CaregiverIn, db=Depends(get_db), actor=Depends(get_actor)):
     require_patient_access(actor, pid, db, allow_caregivers=False)   # caregivers can't add caregivers
+    if not db.get(Patient, pid):
+        raise HTTPException(404, "Patient not found")   # caregivers.patient_id is a foreign key (enforced on Postgres)
     cg = Caregiver(patient_id=pid, **body.model_dump(), consent_status="PENDING")
     db.add(cg)
     db.flush()
