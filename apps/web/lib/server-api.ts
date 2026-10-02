@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import type {
   Patient, AttentionItem, DashboardOverview, Patient360, DailyChecklist,
   CarePlanItem, Role, CaregiverView,
@@ -46,6 +47,9 @@ async function req<T>(path: string, actor: ServerActor = DOCTOR_ACTOR): Promise<
       detail = parsed.detail ?? detail;
     } catch {
       // Keep the backend response as text.
+    }
+    if (res.status === 401 && /access code required/i.test(detail)) {
+      redirect("/access");
     }
     throw new Error(`[${res.status}] ${detail}`);
   }
