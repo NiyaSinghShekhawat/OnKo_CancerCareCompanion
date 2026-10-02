@@ -128,12 +128,14 @@ def test_pending_consent_refused(db):
     assert r.status_code == 403 and r.json()["detail"] == "Caregiver access not granted"
 
 
-@pytest.mark.parametrize("change", [{"consent_status": "REVOKED"},
-                                    {"permissions": {"view_journey": False, "upload_reports": True,
-                                                     "receive_escalations": True}}])
+@pytest.mark.parametrize("change", ["revoke", "no view_journey"])
 def test_revoked_or_no_view_journey_refused_even_for_doctor(db, change):
     cid = cg_id(db, "Sunita Kumar")
-    c.patch(f"/caregivers/{cid}", json=change, headers=DOCTOR)
+    if change == "revoke":
+        assert c.post(f"/caregivers/{cid}/revoke", headers=DOCTOR).status_code == 200
+    else:
+        c.patch(f"/caregivers/{cid}", headers=DOCTOR, json={"permissions": {
+            "view_journey": False, "upload_reports": True, "receive_escalations": True}})
     for headers in (as_caregiver(cid), DOCTOR):
         r = view(cid, headers=headers)
         assert r.status_code == 403 and r.json()["detail"] == "Caregiver access not granted"

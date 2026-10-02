@@ -123,7 +123,7 @@ def test_revoking_consent_removes_access_immediately():
     cid = sunita["X-User-Id"]
     assert c.get("/patients/p_rajesh/checklist/today", headers=sunita).status_code == 200
     assert c.get(f"/caregivers/{cid}/view", headers=sunita).status_code == 200
-    c.patch(f"/caregivers/{cid}", json={"consent_status": "REVOKED"}, headers=patient("p_rajesh"))
+    assert c.post(f"/caregivers/{cid}/revoke", headers=patient("p_rajesh")).status_code == 200
     assert c.get("/patients/p_rajesh/checklist/today", headers=sunita).status_code == 403
     assert c.get(f"/caregivers/{cid}/view", headers=sunita).status_code == 403
 
@@ -224,13 +224,14 @@ def test_caregiver_without_upload_permission_still_refused():
 def test_caregiver_cannot_change_own_permissions_or_invite():
     sunita = caregiver("Sunita Kumar")
     cid = sunita["X-User-Id"]
-    assert c.patch(f"/caregivers/{cid}", json={"consent_status": "GRANTED"}, headers=sunita).status_code == 403
+    perms = {"permissions": {"view_journey": True, "upload_reports": True, "receive_escalations": True}}
+    assert c.patch(f"/caregivers/{cid}", json=perms, headers=sunita).status_code == 403
     invite = {"name": "Ravi Kumar", "relation": "Son", "phone_whatsapp": "whatsapp:+910000000099"}
     assert c.post("/patients/p_rajesh/caregivers", json=invite, headers=sunita).status_code == 403
     assert c.post("/patients/p_rajesh/caregivers", json=invite, headers=patient("p_priya")).status_code == 403
     assert c.post("/patients/p_rajesh/caregivers", json=invite, headers=patient("p_rajesh")).status_code == 200
-    assert c.patch(f"/caregivers/{cid}", json={"consent_status": "GRANTED"}, headers=patient("p_priya")).status_code == 403
-    assert c.patch(f"/caregivers/{cid}", json={"consent_status": "GRANTED"}, headers=NURSE).status_code == 200
+    assert c.patch(f"/caregivers/{cid}", json=perms, headers=patient("p_priya")).status_code == 403
+    assert c.patch(f"/caregivers/{cid}", json=perms, headers=NURSE).status_code == 200
 
 
 # ---------- whatsapp/ builds Actor("patient", id) directly, with no HTTP headers ----------
