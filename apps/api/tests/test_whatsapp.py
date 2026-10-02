@@ -194,3 +194,19 @@ def test_daily_job_sends_one_checklist_per_eligible_patient():
     assert summary["sent"] + summary["not_sent"] >= 1          # dry run in tests: "not_sent" but delivered + logged
     sent_logs = [a for a in c.get("/audit?entity_id=p_rajesh").json() if a["action"] == "whatsapp_checklist_sent"]
     assert len(sent_logs) == 1
+
+
+def test_transfer_of_care_sos_still_alerts_caregiver(capsys):
+    c.patch("/patients/p_rajesh/journey-state", json={"state": "TRANSFER_OF_CARE", "reason": "test"})
+    reply = wa("SOS")
+    assert "केयरगिवर" in reply
+    assert "OnKo alert: Rajesh Kumar" in capsys.readouterr().out
+    assert c.get("/attention").json()[0]["label"] == "SOS"
+
+
+def test_sos_dedupe_resets_after_demo_reset(capsys):
+    wa("SOS")
+    c.post("/demo/reset")
+    reply = wa("SOS")
+    assert "केयरगिवर" in reply
+    assert capsys.readouterr().out.count("OnKo alert: Rajesh Kumar") == 2

@@ -199,3 +199,18 @@ def test_ai_input_is_capped(monkeypatch):
     monkeypatch.setattr(client, "_anthropic", lambda s, u: seen.setdefault("u", u) and '{"ok": 1}')
     client.call_json("sys", "a" * 5000)
     assert len(seen["u"]) < 200
+
+
+def test_duration_with_multiplication_sign():
+    for t in ("Dolo 650mg BD × 3 days from 5 Oct", "Dolo 650mg BD x 3 days from 5 Oct", "Dolo 650mg BD x3 days from 5 Oct"):
+        it = structure_care_plan(t, {})["items"][0]
+        assert it["details"]["duration"] == "3 days" and it["end_date"].endswith("-10-07"), t
+
+
+def test_missing_date_warned_once_even_if_llm_also_warns(monkeypatch):
+    fake = {"items": [{"type": "MEDICATION", "title": "Ondansetron", "details": {}, "start_date": "",
+                       "source_span": "Ondansetron before chemo"}],
+            "warnings": ["Start date missing for Ondansetron", "No date given for Ondansetron — set it before approving."]}
+    monkeypatch.setattr("ai.copilot.call_json", lambda *_: fake)
+    w = structure_care_plan("Ondansetron before chemo.", {})["warnings"]
+    assert sum("ondansetron" in x.lower() and "date" in x.lower() for x in w) == 1

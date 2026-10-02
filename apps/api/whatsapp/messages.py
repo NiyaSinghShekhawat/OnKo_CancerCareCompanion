@@ -12,6 +12,7 @@ from datetime import timedelta
 from ai.client import today_ist
 from core.models import AuditLog, Caregiver, Patient
 from core.services import audit
+from core.services import journey_state
 from core.services.journey_state import can_message
 from core.timeutil import utcnow
 
@@ -247,7 +248,9 @@ def notify_caregivers(db, patient: Patient, channel: str = "whatsapp") -> list[s
     Called by core's trigger_sos for app + WhatsApp SOS. A repeat within 60 s for the same patient is ignored;
     the check uses the audit log, so it holds across restarts and multiple server workers.
     """
-    if not can_message(patient.journey_state) or _recent_notification(db, patient):
+    # A patient-declared SOS reaches caregivers in every state except DECEASED — including TRANSFER_OF_CARE,
+    # where only routine automated messages are paused.
+    if not journey_state.attention_allowed(patient.journey_state) or _recent_notification(db, patient):
         return []
     notified = []
     cgs = db.query(Caregiver).filter_by(patient_id=patient.id, consent_status="GRANTED").all()
