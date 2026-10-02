@@ -66,6 +66,7 @@ def patient_360(pid: str, db=Depends(get_db), actor=Depends(get_actor)):
         "care_plan": [to_dict(x) for x in db.query(CarePlanItem).filter_by(patient_id=pid)],
         "timeline": [to_dict(x) for x in events],
         "open_queries": [to_dict(x) for x in queries if x.status != "RESOLVED"],
+        "query_history": [to_dict(x) for x in reversed(queries)],
         "reports": [to_dict(x) for x in reports],
         "caregivers": [to_dict(x) for x in db.query(Caregiver).filter_by(patient_id=pid)],
         "attention": [to_dict(x) for x in db.query(AttentionItem).filter_by(patient_id=pid)],
