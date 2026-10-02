@@ -1,7 +1,7 @@
 // The ONLY place that talks to the backend. Toggle mocks with NEXT_PUBLIC_USE_MOCKS.
 import type {
   Patient, AttentionItem, DashboardOverview, Patient360, DailyChecklist, CarePlanDraft,
-  CopilotItem, CareEvent, EventStatus, PatientQuery, Role,
+  CarePlanItem, CopilotItem, CareEvent, EventStatus, PatientQuery, Role,
 } from "./types";
 import patientsMock from "@/mocks/patients.json";
 import attentionMock from "@/mocks/attention.json";
@@ -35,6 +35,8 @@ export const api = {
   attention: () => USE_MOCKS ? mock<AttentionItem[]>(attentionMock) : req<AttentionItem[]>("/attention"),
   overview: () => USE_MOCKS ? mock<DashboardOverview>(overviewMock) : req<DashboardOverview>("/dashboard/overview"),
   checklistToday: (id: string) => USE_MOCKS ? mock<DailyChecklist>(checklistMock) : req<DailyChecklist>(`/patients/${id}/checklist/today`),
+
+  carePlan: (id: string) => USE_MOCKS ? mock<CarePlanItem[]>((p360Mock as Patient360).care_plan) : req<CarePlanItem[]>(`/patients/${id}/careplan`),
 
   createDraft: (patient_id: string, raw_text: string) =>
     USE_MOCKS ? mock<CarePlanDraft>(draftMock)
