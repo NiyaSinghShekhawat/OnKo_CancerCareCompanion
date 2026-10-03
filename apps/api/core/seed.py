@@ -96,8 +96,10 @@ def _load(db):
                           route_to="care_team_queue"))
     db.add_all([
         # Fixed ids (cg_<first name>) so demo logins and tests survive a reseed, like the p_<name> patient ids.
+        # DEMO_CAREGIVER_WHATSAPP: a real number (joined to the Twilio sandbox) so SOS alerts actually arrive.
         m.Caregiver(id="cg_sunita", patient_id="p_rajesh", name="Sunita Kumar", relation="Wife",
-                    phone_whatsapp="whatsapp:+910000000010", consent_status="GRANTED",
+                    phone_whatsapp=os.getenv("DEMO_CAREGIVER_WHATSAPP") or "whatsapp:+910000000010",
+                    consent_status="GRANTED",
                     permissions={"view_journey": True, "upload_reports": True, "receive_escalations": True}),
         m.Caregiver(id="cg_karthik", patient_id="p_priya", name="Karthik Sundaram", relation="Brother",
                     phone_whatsapp="whatsapp:+910000000011", consent_status="PENDING"),
