@@ -26,7 +26,7 @@ const roles = [
     icon: Stethoscope,
   },
   {
-    href: "/caregiver",
+    href: "/caregiver/login",
     name: "Caregiver",
     tag: "Consent-based support",
     description: "Stay informed about the parts of the care journey the patient has chosen to share and help with permitted coordination and uploads.",
