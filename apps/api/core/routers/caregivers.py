@@ -131,6 +131,9 @@ def invite(pid: str, body: CaregiverIn, db=Depends(get_db), actor=Depends(get_ac
         "caregiver": to_dict(cg),
         "login_id": cg.id,
         "whatsapp_sent": sent,
+        # Returned once to the authenticated patient who created access.
+        # Only the hash is persisted in the database.
+        "password": password,
     }
     if not sent:
         response["warning"] = "Caregiver added, but WhatsApp credential delivery failed or is not configured."
