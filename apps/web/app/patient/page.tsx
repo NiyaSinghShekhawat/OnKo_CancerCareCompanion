@@ -3,7 +3,8 @@ import Link from "next/link";
 import PatientShell from "@/components/PatientShell";
 import PatientEventCard from "@/components/PatientEventCard";
 import {serverApi} from "@/lib/server-api";
-import {fmtDate} from "@/lib/format";\nimport {currentPatientId} from "@/lib/patient-session";
+import {fmtDate} from "@/lib/format";
+import {currentPatientId} from "@/lib/patient-session";
 export const dynamic="force-dynamic";
 const DEMO_PATIENTS=new Set(["p_rajesh","p_priya","p_arjun","p_lakshmi","p_meera","p_vikram","p_farhan","p_kamala"]);
 export default async function PatientHome({searchParams}:{searchParams?:{id?:string}}){
