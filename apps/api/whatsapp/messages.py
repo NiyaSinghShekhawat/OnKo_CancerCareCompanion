@@ -25,7 +25,7 @@ def render_patient_access(patient_name: str, patient_id: str, password: str, log
     return (
         f"Welcome to OnKo, {first}. Your care team has created your patient dashboard.\n\n"
         f"Patient ID: {patient_id}\n"
-        f"Temporary access code: {access_code}\n"
+        f"Password: {password}\n"
         f"Login: {login_url}\n\n"
         "Keep this password private. You can reuse it to sign in until it is changed. OnKo organizes your recorded care journey; clinical decisions remain with your care team."
     )
@@ -42,3 +42,15 @@ def render_checklist(patient_name: str, items: list[dict]) -> str:
 
 MENU = ("OnKo menu:\n1️⃣ Medication\n2️⃣ Query / Need help\n🆘 Reply SOS for urgent help\n\n"
         "For urgent help, your caregiver and care team will be alerted.")
+
+
+def render_caregiver_access(caregiver_name: str, patient_name: str, caregiver_id: str, password: str, login_url: str) -> str:
+    first = caregiver_name.split()[0] if caregiver_name.split() else "there"
+    patient_first = patient_name.split()[0] if patient_name.split() else patient_name
+    return (
+        f"Welcome to OnKo, {first}. {patient_first} has granted you caregiver dashboard access.\n\n"
+        f"Caregiver ID: {caregiver_id}\n"
+        f"Password: {password}\n"
+        f"Login: {login_url}\n\n"
+        "Keep this password private. Access remains controlled by the patient and may be changed or revoked by them."
+    )
