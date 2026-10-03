@@ -44,6 +44,7 @@ export type CaregiverInviteResult = {
   login_id: string;
   whatsapp_sent: boolean;
   warning?: string;
+  password?: string;
   demo_password?: string;
 };
 
