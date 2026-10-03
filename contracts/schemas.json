@@ -100,7 +100,8 @@
   },
 
   "AuditLog": {
-    "id": "string", "actor_id": "string", "actor_role": "Role", "action": "string",
+    "_note": "actor_role \"system\" (actor_id \"whatsapp\") marks automated actions written by whatsapp/: always for caregivers_notified; for whatsapp_checklist_sent when the daily scheduler or the cron secret sent it (a doctor/care_team call records that person).",
+    "id": "string", "actor_id": "string", "actor_role": "Role|system", "action": "string",
     "entity_type": "string", "entity_id": "string", "before": "object|null", "after": "object|null",
     "timestamp": "ISO datetime"
   }

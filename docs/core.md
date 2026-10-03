@@ -89,6 +89,14 @@ The two WhatsApp routes (in `whatsapp/`):
 
 - **Free tier sleeps.** Render's free instance stops after about 15 minutes without traffic; the first request after that takes a while to wake it. Open `/docs` a minute before demoing.
 - **Reset only by agreement.** `POST /demo/reset` (and `python -m core.seed` against the Supabase URL) wipes everyone's shared data. Agree in the group first.
+- **Real WhatsApp numbers for the demo.** Seeded phone numbers are placeholders (`+9100000000xx`), so Twilio can't deliver to them. Two optional variables, read when seeding (`python -m core.seed` or `POST /demo/reset`), put real phones in:
+
+  | Variable | Becomes the WhatsApp number of |
+  |---|---|
+  | `DEMO_PATIENT_WHATSAPP` | Rajesh (`p_rajesh`) — the phone that chats with the bot |
+  | `DEMO_CAREGIVER_WHATSAPP` | Sunita (`cg_sunita`) — the phone that receives Rajesh's SOS alerts |
+
+  Each number must first **join the Twilio WhatsApp sandbox** (send the sandbox's "join …" message to `TWILIO_WHATSAPP_FROM`); otherwise Twilio accepts the request but fails delivery with error 63015, and the alert never arrives even though the audit shows `caregivers_notified`. Use two different phones. If `DEMO_CAREGIVER_WHATSAPP` is unset or empty, Sunita keeps her placeholder; if `DEMO_PATIENT_WHATSAPP` is unset, Rajesh gets `whatsapp:+910000000000`. Tests always use the placeholders.
 
 ---
 
@@ -120,7 +128,7 @@ Every request sends `X-Role` and `X-User-Id` (see §8). These are the seeded use
 
 | Caregiver id | Name | Patient | Relation | Consent |
 |---|---|---|---|---|
-| `cg_sunita` | Sunita Kumar | `p_rajesh` | Wife | GRANTED |
+| `cg_sunita` | Sunita Kumar | `p_rajesh` | Wife | GRANTED (number from `DEMO_CAREGIVER_WHATSAPP` if set) |
 | `cg_karthik` | Karthik Sundaram | `p_priya` | Brother | PENDING |
 | `cg_lakshmi` | Lakshmi Iyer | `p_meera` | Daughter | GRANTED |
 | `cg_harpreet` | Harpreet Singh | `p_vikram` | Wife | GRANTED |
@@ -309,6 +317,8 @@ Revoking takes effect immediately: every caregiver check and SOS notification lo
 
 Every audit entry has `actor_id`, `actor_role`, `action`, `entity_type`, `entity_id`, `before`, `after`, `timestamp`. Read them with `GET /audit?entity_id=` (staff only; newest 200).
 
+`actor_role` is one of the four roles, or **`system`** (with `actor_id` `whatsapp`) for automated actions written by `whatsapp/`. That's always the case for `caregivers_notified`, and for `whatsapp_checklist_sent` when the daily scheduler or the cron secret sent the checklist; when a doctor or nurse calls `send-checklist`, the entry records that person. The contract (`AuditLog` in `contracts/schemas.json`) lists it as `Role|system`, so the web app should expect it when showing audit history.
+
 | Action | Entity | Written when |
 |---|---|---|
 | `journey_state_change` | patient | Doctor sets a journey state |
@@ -335,7 +345,7 @@ Every audit entry has `actor_id`, `actor_role`, `action`, `entity_type`, `entity
 | `caregiver_reinvited` | caregiver | REVOKED → PENDING |
 | `caregiver_view_accessed` | caregiver | Caregiver view opened |
 | `caregivers_notified` | patient | SOS alert sent to caregivers (`after.names`, `after.channel`); written by `whatsapp/` with actor role `system`; also drives the 60-second de-dupe |
-| `whatsapp_checklist_sent` | patient | WhatsApp checklist sent (`after.event_ids` = the numbered order the patient saw, used to match "1 done, 3 missed" replies for 24h); written by `whatsapp/` |
+| `whatsapp_checklist_sent` | patient | WhatsApp checklist sent (`after.event_ids` = the numbered order the patient saw, used to match "1 done, 3 missed" replies for 24h); written by `whatsapp/`; actor role `system` when sent by the scheduler or cron secret, otherwise the staff member who sent it |
 
 ---
 
