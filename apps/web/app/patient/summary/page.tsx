@@ -1,7 +1,7 @@
 import {CalendarDays,ClipboardCheck,FileText,Pill,Stethoscope,Target} from "lucide-react";
 import PatientShell from "@/components/PatientShell";
 import PrintSummaryButton from "@/components/PrintSummaryButton";
-import { serverApi } from "@/lib/server-api";
+import { serverApi } from "@/lib/server-api";\nimport {currentPatientId} from "@/lib/patient-session";
 import {fmtDate} from "@/lib/format";
 export const dynamic="force-dynamic"; const ID="p_rajesh";
 export default async function Summary(){const d=await serverApi.patient360(ID,{role:"patient",userId:ID}),p=d.patient;const groups=[["Medication","MEDICATION",Pill],["Treatments","TREATMENT",Stethoscope],["Investigations","INVESTIGATION",ClipboardCheck],["Appointments","APPOINTMENT",CalendarDays],["Milestones","MILESTONE",Target]] as const;return <PatientShell patient={p}><div className="mx-auto max-w-5xl print:max-w-none"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="onko-eyebrow">Portable care summary</p><h1 className="mt-1 text-[30px] font-bold sm:text-[38px]">{p.name}&apos;s Care Summary</h1><p className="mt-2 text-[14px] text-onko-muted">An organized view of information already recorded in OnKo for continuity of care.</p></div><PrintSummaryButton/></div>
