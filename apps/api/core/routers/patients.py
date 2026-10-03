@@ -45,7 +45,7 @@ def _patient_id(name: str, db) -> str:
     raise HTTPException(500, "Unable to allocate patient id")
 
 
-def _temporary_code() -> str:
+def _initial_password() -> str:
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     return "".join(secrets.choice(alphabet) for _ in range(8))
 
@@ -176,10 +176,10 @@ def enroll_patient(body: EnrollPatientIn, db=Depends(get_db), actor=Depends(get_
     db.add(patient)
     db.flush()
 
-    code = _temporary_code()
+    password = _initial_password()
     db.add(PatientAccess(
         patient_id=pid,
-        access_code_hash=_hash_secret(code),
+        access_code_hash=_hash_secret(password),
         active=True,
         must_change=True,
     ))
@@ -192,7 +192,7 @@ def enroll_patient(body: EnrollPatientIn, db=Depends(get_db), actor=Depends(get_
     login_url = os.getenv("PATIENT_LOGIN_URL", "http://localhost:3000/patient/login")
     sent = messages.send(
         phone,
-        messages.render_patient_access(body.name.strip(), pid, code, login_url),
+        messages.render_patient_access(body.name.strip(), pid, password, login_url),
     )
     response = {
         "patient": to_dict(patient),
@@ -202,13 +202,14 @@ def enroll_patient(body: EnrollPatientIn, db=Depends(get_db), actor=Depends(get_
     if not sent:
         response["warning"] = "Patient created, but WhatsApp delivery is not configured or failed."
     if os.getenv("ONKO_DEMO_CREDENTIAL_ECHO", "").lower() == "true":
-        response["demo_access_code"] = code
+        response["demo_password"] = password
     return response
 
 
 class PatientLoginIn(BaseModel):
     patient_id: str
-    access_code: str
+    password: str | None = None
+    access_code: str | None = None  # backward compatibility for older clients
 
 
 @router.post("/patient-auth/login")
@@ -217,9 +218,10 @@ def patient_login(body: PatientLoginIn, db=Depends(get_db)):
     access = db.get(PatientAccess, patient_id)
     patient = db.get(Patient, patient_id)
     if not patient or not access or not access.active:
-        raise HTTPException(401, "Invalid patient ID or access code")
-    if access.access_code_hash != _hash_secret(body.access_code.strip().upper()):
-        raise HTTPException(401, "Invalid patient ID or access code")
+        raise HTTPException(401, "Invalid patient ID or password")
+    supplied = (body.password or body.access_code or "").strip().upper()
+    if not supplied or access.access_code_hash != _hash_secret(supplied):
+        raise HTTPException(401, "Invalid patient ID or password")
     access.last_login_at = datetime.utcnow()
     db.commit()
     return {
