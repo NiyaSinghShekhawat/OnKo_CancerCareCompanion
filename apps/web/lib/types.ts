@@ -65,6 +65,7 @@ export interface MinimizedCareEvent {
 }
 
 export interface CaregiverView {
+  caregiver: Caregiver;
   patient: {
     id: string; name: string; journey_state: JourneyState; preferred_language: string;
   };
