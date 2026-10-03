@@ -36,6 +36,33 @@ class Patient(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class PatientAccess(Base):
+    """Prototype patient-dashboard credential record.
+
+    Only a SHA-256 hash of the temporary access code is stored. The temporary
+    code itself is delivered once through the configured WhatsApp provider.
+    """
+    __tablename__ = "patient_access"
+    patient_id: Mapped[str] = mapped_column(String, ForeignKey("patients.id"), primary_key=True)
+    access_code_hash: Mapped[str] = mapped_column(String)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    must_change: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class PatientVerification(Base):
+    """Short-lived WhatsApp OTP state used during doctor-led enrollment."""
+    __tablename__ = "patient_verifications"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_id)
+    phone_whatsapp: Mapped[str] = mapped_column(String)
+    otp_hash: Mapped[str] = mapped_column(String)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class CarePlanItem(Base):
     __tablename__ = "care_plan_items"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_id)
