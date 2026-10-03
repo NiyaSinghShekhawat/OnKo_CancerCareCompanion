@@ -2,12 +2,13 @@ import CaregiverShell from "@/components/CaregiverShell";
 import CaregiverEventCard from "@/components/CaregiverEventCard";
 import { Bell, ShieldAlert } from "lucide-react";
 import { serverApi } from "@/lib/server-api";
+import {currentCaregiverId} from "@/lib/caregiver-session";
 
 export const dynamic = "force-dynamic";
-const CAREGIVER = { id: "cg_sunita", name: "Sunita Kumar", relation: "Wife" };
-
 export default async function CaregiverNotifications() {
-  const view = await serverApi.caregiverView(CAREGIVER.id);
+  const caregiverId=currentCaregiverId();
+  const view = await serverApi.caregiverView(caregiverId);
+  const CAREGIVER = { id: view.caregiver.id, name: view.caregiver.name, relation: view.caregiver.relation };
   return (
     <CaregiverShell patient={view.patient} caregiver={CAREGIVER}>
       <div className="mx-auto max-w-4xl">
