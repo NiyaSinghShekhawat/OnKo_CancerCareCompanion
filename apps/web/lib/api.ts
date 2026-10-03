@@ -39,6 +39,21 @@ export type EnrollmentResult = {
   demo_password?: string;
 };
 
+export type CaregiverInviteResult = {
+  caregiver: Caregiver;
+  login_id: string;
+  whatsapp_sent: boolean;
+  warning?: string;
+  demo_password?: string;
+};
+
+export type CaregiverLoginResult = {
+  ok: boolean;
+  caregiver_id: string;
+  name: string;
+  patient_id: string;
+};
+
 export type PatientLoginResult = {
   ok: boolean;
   patient_id: string;
@@ -206,8 +221,19 @@ export const api = {
       { role: "patient", userId: patient_id || "patient_login" },
     ),
 
-  acceptCaregiver: (id: string) =>
-    req<Caregiver>(`/caregivers/${id}/accept`, { method: "POST" }, { role: "caregiver", userId: id }),
+  addCaregiver: (patient_id: string, payload: {name:string; relation:string; phone_whatsapp:string; type?:string}) =>
+    req<CaregiverInviteResult>(
+      `/patients/${patient_id}/caregivers`,
+      { method: "POST", body: JSON.stringify(payload) },
+      { role: "patient", userId: patient_id },
+    ),
+
+  caregiverLogin: (caregiver_id: string, password: string) =>
+    req<CaregiverLoginResult>(
+      "/caregiver-auth/login",
+      { method: "POST", body: JSON.stringify({ caregiver_id, password }) },
+      { role: "caregiver", userId: caregiver_id || "caregiver_login" },
+    ),
   revokeCaregiver: (id: string, actor?: ActorRef) =>
     req<Caregiver>(`/caregivers/${id}/revoke`, { method: "POST" }, actor),
   reinviteCaregiver: (id: string, actor?: ActorRef) =>
