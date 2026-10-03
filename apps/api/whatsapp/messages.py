@@ -20,14 +20,14 @@ def render_enrollment_otp(otp: str) -> str:
     )
 
 
-def render_patient_access(patient_name: str, patient_id: str, access_code: str, login_url: str) -> str:
+def render_patient_access(patient_name: str, patient_id: str, password: str, login_url: str) -> str:
     first = patient_name.split()[0] if patient_name.split() else "there"
     return (
         f"Welcome to OnKo, {first}. Your care team has created your patient dashboard.\n\n"
         f"Patient ID: {patient_id}\n"
         f"Temporary access code: {access_code}\n"
         f"Login: {login_url}\n\n"
-        "Keep this code private. OnKo organizes your recorded care journey; clinical decisions remain with your care team."
+        "Keep this password private. You can reuse it to sign in until it is changed. OnKo organizes your recorded care journey; clinical decisions remain with your care team."
     )
 
 
