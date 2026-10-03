@@ -9,11 +9,12 @@ from pydantic import BaseModel
 
 from core.db import get_db
 from core.auth import STAFF, get_actor, require, require_patient_access
-from core.models import Patient, CareEvent, CarePlanItem, PatientQuery, Report, Caregiver, AttentionItem
+from core.models import Patient, CareEvent, CarePlanItem, PatientQuery, Report, Caregiver, AttentionItem, User, PatientAccess, PatientVerification
 from core.serialize import to_dict
 from core.services import attention, audit, journey_state, review
 from core.timeutil import utcnow
 from ai.summarize import since_last_review
+from whatsapp import messages
 
 router = APIRouter(tags=["patients"])
 
