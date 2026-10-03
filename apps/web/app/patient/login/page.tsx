@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import {useState} from "react";
+import {useState,type FormEvent} from "react";
 import {useRouter} from "next/navigation";
 import {ArrowRight,HeartHandshake,KeyRound,ShieldCheck} from "lucide-react";
 import {api} from "@/lib/api";
@@ -9,7 +9,7 @@ export default function PatientLoginPage(){
  const router=useRouter();
  const [patientId,setPatientId]=useState(""),[code,setCode]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
 
- async function submit(e:React.FormEvent){
+ async function submit(e:FormEvent){
    e.preventDefault();
    if(!patientId.trim()||!code.trim())return;
    setBusy(true);setError("");
