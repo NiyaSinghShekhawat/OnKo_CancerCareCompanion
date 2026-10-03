@@ -17,6 +17,7 @@ export default function PatientLoginPage(){
      const result=await api.patientLogin(patientId.trim(),password.trim());
      document.cookie=`onko_patient_id=${encodeURIComponent(result.patient_id)}; path=/; SameSite=Lax`;
      window.sessionStorage.setItem("onko-patient-id",result.patient_id);
+     window.sessionStorage.setItem("onko-patient-password",password.trim());
      router.push("/patient");
      router.refresh();
    }catch(err){setError(err instanceof Error?err.message:"Unable to sign in")}
