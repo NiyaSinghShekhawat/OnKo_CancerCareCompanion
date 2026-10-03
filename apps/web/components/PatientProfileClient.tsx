@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, Globe2, ShieldCheck, UserRound, UsersRound } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bell, Globe2, KeyRound, ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import type { Caregiver, Patient } from "@/lib/types";
 import ABHAConnection from "@/components/ABHAConnection";
 import PatientFirstAccess from "@/components/PatientFirstAccess";
@@ -12,6 +12,11 @@ export default function PatientProfileClient({ p, caregivers }: { p: Patient; ca
   const [language, setLanguage] = useState(p.preferred_language);
   const [whatsapp, setWhatsapp] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [patientPassword, setPatientPassword] = useState("");
+
+  useEffect(() => {
+    setPatientPassword(window.sessionStorage.getItem("onko-patient-password") || "");
+  }, []);
 
   return (
     <div className="mx-auto max-w-5xl">
