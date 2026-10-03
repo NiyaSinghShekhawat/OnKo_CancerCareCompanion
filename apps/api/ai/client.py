@@ -8,6 +8,7 @@ call_json() NEVER raises. It returns a parsed dict, or None if:
 import os
 import json
 import re
+import time
 from datetime import datetime, timedelta, timezone
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -90,6 +91,16 @@ def _gemini(system: str, user: str) -> str:
     return "".join(p.get("text", "") for p in parts)
 
 
+def _status_code(exc: Exception) -> int | None:
+    """Extract an HTTP status from httpx / provider SDK exceptions without importing either SDK here."""
+    response = getattr(exc, "response", None)
+    code = getattr(response, "status_code", None)
+    if isinstance(code, int):
+        return code
+    code = getattr(exc, "status_code", None)
+    return code if isinstance(code, int) else None
+
+
 def _redact(text: str) -> str:
     """Mask any API key that might appear in an error message before it is printed."""
     for var in ("GEMINI_API_KEY", "ANTHROPIC_API_KEY"):
@@ -114,7 +125,14 @@ def call_json(system: str, user: str) -> dict | None:
                 return out
             print(f"[ai.client] reply was not valid JSON (attempt {attempt + 1})")
         except Exception as e:  # noqa: BLE001
+            status = _status_code(e)
             print(f"[ai.client] {_provider()} error: {_redact(str(e))}")
+            if attempt == 0 and status in {429, 503}:
+                delay = float(os.getenv("AI_TRANSIENT_RETRY_SECONDS", "1.5"))
+                delay = min(2.0, max(1.0, delay))
+                print(f"[ai.client] transient HTTP {status}; retrying once in {delay:.1f}s")
+                time.sleep(delay)
+                continue
             return None
     return None
 
