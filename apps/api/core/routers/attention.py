@@ -7,7 +7,7 @@ from core.models import AttentionItem, Patient, PatientQuery, Report, CareEvent,
 from core.serialize import to_dict
 from core.services import audit
 from core.timeutil import utcnow
-from tests.test_caregiver_view import db
+
 
 router = APIRouter(tags=["attention"])
 ORDER = {"SOS": 0, "NEEDS_REVIEW": 1, "QUERY": 2, "FOLLOW_UP": 3}
