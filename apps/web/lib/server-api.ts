@@ -110,6 +110,16 @@ export const serverApi = {
   caregiverView: (id: string) =>
     USE_MOCKS
       ? mock<CaregiverView>({
+          caregiver: {
+            id: "cg_sunita",
+            patient_id: "p_rajesh",
+            name: "Sunita Kumar",
+            relation: "Wife",
+            phone_whatsapp: "",
+            type: "family",
+            consent_status: "GRANTED",
+            permissions: { view_journey: true, upload_reports: true, receive_escalations: true },
+          },
           patient: {
             id: "p_rajesh",
             name: "Rajesh Kumar",
