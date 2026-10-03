@@ -18,6 +18,34 @@ const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
 export type ActorRef = { role: Role; userId: string };
 
+export type EnrollmentPayload = {
+  name: string;
+  age: number;
+  gender: string;
+  preferred_language: string;
+  phone: string;
+  abha_id?: string | null;
+  diagnosis_label: string;
+  regimen_label: string;
+  cycle_current: number;
+  cycle_total: number;
+};
+
+export type EnrollmentResult = {
+  patient: Patient;
+  login_id: string;
+  whatsapp_sent: boolean;
+  warning?: string;
+  demo_access_code?: string;
+};
+
+export type PatientLoginResult = {
+  ok: boolean;
+  patient_id: string;
+  name: string;
+  must_change: boolean;
+};
+
 let role: Role = "doctor";
 let userId = "doc_mehta";
 
@@ -149,6 +177,34 @@ export const api = {
   sendQuery: (patient_id: string, text: string, actor?: ActorRef) =>
     USE_MOCKS ? mock<PatientQuery>({})
       : req<PatientQuery>("/queries", { method: "POST", body: JSON.stringify({ patient_id, text, channel: "app" }) }, actor),
+
+  sendEnrollmentOtp: (phone: string) =>
+    req<{ sent: boolean; expires_in_minutes: number; phone: string; demo_otp?: string }>(
+      "/patients/enrollment/send-otp",
+      { method: "POST", body: JSON.stringify({ phone }) },
+      { role: "doctor", userId: "doc_mehta" },
+    ),
+
+  verifyEnrollmentOtp: (phone: string, otp: string) =>
+    req<{ verified: boolean; phone: string }>(
+      "/patients/enrollment/verify-otp",
+      { method: "POST", body: JSON.stringify({ phone, otp }) },
+      { role: "doctor", userId: "doc_mehta" },
+    ),
+
+  enrollPatient: (payload: EnrollmentPayload) =>
+    req<EnrollmentResult>(
+      "/patients/enroll",
+      { method: "POST", body: JSON.stringify(payload) },
+      { role: "doctor", userId: "doc_mehta" },
+    ),
+
+  patientLogin: (patient_id: string, access_code: string) =>
+    req<PatientLoginResult>(
+      "/patient-auth/login",
+      { method: "POST", body: JSON.stringify({ patient_id, access_code }) },
+      { role: "patient", userId: patient_id || "patient_login" },
+    ),
 
   acceptCaregiver: (id: string) =>
     req<Caregiver>(`/caregivers/${id}/accept`, { method: "POST" }, { role: "caregiver", userId: id }),
