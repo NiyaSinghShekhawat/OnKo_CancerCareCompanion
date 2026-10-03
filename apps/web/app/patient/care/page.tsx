@@ -1,7 +1,8 @@
 import {CalendarDays,CheckCircle2,ClipboardCheck,Stethoscope,Target} from "lucide-react";
 import PatientShell from "@/components/PatientShell";
 import PatientEventCard from "@/components/PatientEventCard";
-import { serverApi } from "@/lib/server-api";\nimport {currentPatientId} from "@/lib/patient-session";
+import { serverApi } from "@/lib/server-api";
+import {currentPatientId} from "@/lib/patient-session";
 export const dynamic="force-dynamic";
 const sections=[
  {id:"appointments",title:"Appointments & follow-ups",type:"APPOINTMENT",icon:CalendarDays,description:"Upcoming, completed, missed and rescheduled appointments recorded by your care team."},
