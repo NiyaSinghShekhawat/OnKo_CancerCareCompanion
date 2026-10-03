@@ -2,14 +2,15 @@ import {CalendarDays,CheckCircle2,ClipboardCheck,Stethoscope,Target} from "lucid
 import PatientShell from "@/components/PatientShell";
 import PatientEventCard from "@/components/PatientEventCard";
 import { serverApi } from "@/lib/server-api";
-export const dynamic="force-dynamic"; const ID="p_rajesh";
+import {currentPatientId} from "@/lib/patient-session";
+export const dynamic="force-dynamic";
 const sections=[
  {id:"appointments",title:"Appointments & follow-ups",type:"APPOINTMENT",icon:CalendarDays,description:"Upcoming, completed, missed and rescheduled appointments recorded by your care team."},
  {id:"investigations",title:"Investigations & tests",type:"INVESTIGATION",icon:ClipboardCheck,description:"Doctor-ordered tests, due dates and recorded completion status. Results are not interpreted here."},
  {id:"treatments",title:"Treatments & procedures",type:"TREATMENT",icon:Stethoscope,description:"Your doctor-approved treatment and procedure schedule."},
  {id:"milestones",title:"Milestones",type:"MILESTONE",icon:Target,description:"Daily and weekly care activities assigned by your care team."},
 ] as const;
-export default async function CareActivities(){const d=await serverApi.patient360(ID,{role:"patient",userId:ID}),p=d.patient;const completed=d.timeline.filter(e=>e.status==="COMPLETED").length;return <PatientShell patient={p}><div className="mx-auto max-w-5xl">
+export default async function CareActivities({searchParams}:{searchParams?:{id?:string}}){const ID=currentPatientId(searchParams);const d=await serverApi.patient360(ID,{role:"patient",userId:ID}),p=d.patient;const completed=d.timeline.filter(e=>e.status==="COMPLETED").length;return <PatientShell patient={p}><div className="mx-auto max-w-5xl">
  <p className="onko-eyebrow">More of your care</p><h1 className="mt-1 text-[30px] font-bold sm:text-[38px]">Appointments & Care Activities</h1><p className="mt-2 max-w-2xl text-[15px] leading-6 text-onko-muted">The rest of your doctor-approved journey, grouped here so the main navigation stays simple.</p>
  <section className="mt-5 grid gap-3 sm:grid-cols-3"><div className="onko-card p-5"><p className="text-[12px] font-bold uppercase text-onko-muted">Recorded activities</p><p className="mt-2 text-[30px] font-bold">{d.timeline.length}</p></div><div className="onko-card p-5"><p className="text-[12px] font-bold uppercase text-onko-muted">Completed</p><p className="mt-2 text-[30px] font-bold text-onko-teal">{completed}</p></div><div className="onko-card p-5"><p className="text-[12px] font-bold uppercase text-onko-muted">Journey state</p><p className="mt-2 text-[16px] font-bold capitalize">{p.journey_state.replaceAll("_"," ").toLowerCase()}</p></div></section>
  <nav className="mt-5 flex gap-2 overflow-x-auto pb-1">{sections.map(s=><a key={s.id} href={"#"+s.id} className="whitespace-nowrap rounded-full border border-onko-line bg-white px-4 py-2 text-[13px] font-semibold text-onko-teal hover:bg-onko-hover">{s.title}</a>)}</nav>
