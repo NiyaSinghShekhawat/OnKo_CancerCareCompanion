@@ -177,6 +177,46 @@ def render_recorded(patient, recorded: list[tuple[int, str, str, bool]], unknown
     return "\n".join(lines)
 
 
+# ---------------- enrollment / dashboard access ----------------
+
+def render_enrollment_otp(otp: str) -> str:
+    return (
+        "OnKo number verification\n\n"
+        f"Your verification code is: {otp}\n"
+        "This code expires in 10 minutes. Share it only with the care-team member enrolling you."
+    )
+
+
+def render_patient_access(patient_name: str, patient_id: str, password: str, login_url: str) -> str:
+    first = patient_name.split()[0] if patient_name.split() else "there"
+    return (
+        f"Welcome to OnKo, {first}. Your care team has created your patient dashboard.\n\n"
+        f"Patient ID: {patient_id}\n"
+        f"Password: {password}\n"
+        f"Login: {login_url}\n\n"
+        "Keep this password private. You can reuse it to sign in until it is changed. "
+        "OnKo organizes your recorded care journey; clinical decisions remain with your care team."
+    )
+
+
+def render_caregiver_access(
+    caregiver_name: str,
+    patient_name: str,
+    caregiver_id: str,
+    password: str,
+    login_url: str,
+) -> str:
+    first = caregiver_name.split()[0] if caregiver_name.split() else "there"
+    patient_first = patient_name.split()[0] if patient_name.split() else patient_name
+    return (
+        f"Welcome to OnKo, {first}. {patient_first} has granted you caregiver dashboard access.\n\n"
+        f"Caregiver ID: {caregiver_id}\n"
+        f"Password: {password}\n"
+        f"Login: {login_url}\n\n"
+        "Keep this password private. Access remains controlled by the patient and may be changed or revoked by them."
+    )
+
+
 # ---------------- sending ----------------
 
 def _production() -> bool:
