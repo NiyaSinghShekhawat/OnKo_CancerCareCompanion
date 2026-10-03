@@ -26,7 +26,8 @@ export default function PatientShell({patient,children}:{patient:{id:string;name
  useEffect(()=>setActor("patient",patient.id),[patient.id]);
  useEffect(()=>{const saved=window.localStorage.getItem("onko-language");if(saved==="Hindi"||saved==="Telugu"||saved==="English")setLanguage(saved);const sync=()=>{const v=window.localStorage.getItem("onko-language");if(v==="Hindi"||v==="Telugu"||v==="English")setLanguage(v)};window.addEventListener("onko-language-change",sync);return()=>window.removeEventListener("onko-language-change",sync)},[]);
  useEffect(()=>{const close=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false)};document.addEventListener("mousedown",close);return()=>document.removeEventListener("mousedown",close)},[]);
- const initials=patient.name.split(" ").map(x=>x[0]).join("").slice(0,2);\n const patientHref=(href:string)=>{const [base,hash]=href.split("#");return `${base}?id=${encodeURIComponent(patient.id)}${hash?`#${hash}`:""}`};
+ const initials=patient.name.split(" ").map(x=>x[0]).join("").slice(0,2);
+ const patientHref=(href:string)=>{const [base,hash]=href.split("#");return `${base}?id=${encodeURIComponent(patient.id)}${hash?`#${hash}`:""}`};
  const active=(href:string)=>href==="/patient"?path===href:path.startsWith(href);
  return <div className="min-h-screen bg-[#ECFAF7] text-onko-ink">
   <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-onko-teal">Skip to content</a><header className="fixed inset-x-0 top-0 z-50 border-b border-[#D7EEEA] bg-[#ECFAF7]/95 backdrop-blur">
