@@ -105,7 +105,7 @@ export default function CaregiverLifecycle({
             Accept invitation
           </button>
         )}
-        {state === "GRANTED" && (
+        {mode === "patient" && state === "GRANTED" && (
           <button disabled={busy} onClick={() => void moveConsent("revoke")} className="onko-button-secondary text-onko-sos disabled:opacity-50">
             Revoke caregiver access
           </button>
