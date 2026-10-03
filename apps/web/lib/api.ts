@@ -256,6 +256,48 @@ deleteCarePlanItem: (id: string) =>
         }
       ),
 
+  sendEnrollmentOtp: (phone: string) =>
+    req<{ sent: boolean; expires_in_minutes: number; phone: string; demo_otp?: string }>(
+      "/patients/enrollment/send-otp",
+      { method: "POST", body: JSON.stringify({ phone }) },
+      { role: "doctor", userId: "doc_mehta" },
+    ),
+
+  verifyEnrollmentOtp: (phone: string, otp: string) =>
+    req<{ verified: boolean; phone: string }>(
+      "/patients/enrollment/verify-otp",
+      { method: "POST", body: JSON.stringify({ phone, otp }) },
+      { role: "doctor", userId: "doc_mehta" },
+    ),
+
+  enrollPatient: (payload: EnrollmentPayload) =>
+    req<EnrollmentResult>(
+      "/patients/enroll",
+      { method: "POST", body: JSON.stringify(payload) },
+      { role: "doctor", userId: "doc_mehta" },
+    ),
+
+  patientLogin: (patient_id: string, password: string) =>
+    req<PatientLoginResult>(
+      "/patient-auth/login",
+      { method: "POST", body: JSON.stringify({ patient_id, password }) },
+      { role: "patient", userId: patient_id || "patient_login" },
+    ),
+
+  addCaregiver: (patient_id: string, payload: {name:string; relation:string; phone_whatsapp:string; type?:string}) =>
+    req<CaregiverInviteResult>(
+      `/patients/${patient_id}/caregivers`,
+      { method: "POST", body: JSON.stringify(payload) },
+      { role: "patient", userId: patient_id },
+    ),
+
+  caregiverLogin: (caregiver_id: string, password: string) =>
+    req<CaregiverLoginResult>(
+      "/caregiver-auth/login",
+      { method: "POST", body: JSON.stringify({ caregiver_id, password }) },
+      { role: "caregiver", userId: caregiver_id || "caregiver_login" },
+    ),
+
   acceptCaregiver: (id: string) =>
     req<Caregiver>(`/caregivers/${id}/accept`, { method: "POST" }, { role: "caregiver", userId: id }),
   revokeCaregiver: (id: string, actor?: ActorRef) =>
