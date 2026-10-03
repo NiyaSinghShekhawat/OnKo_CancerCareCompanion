@@ -26,7 +26,7 @@ T = {
         "menu": "OnKo menu:\n1️⃣ Today's medicines\n2️⃣ Ask a question / need help\n"
                 "🆘 Reply SOS for urgent help — your caregiver and care team will be alerted.",
         "sos_ack": "Your SOS has been sent to your care team. If you need immediate medical help, call 108.",
-        "sos_ack_cg": "Your SOS has been sent to your care team and your caregiver. "
+        "sos_ack_cg": "Your SOS has been sent to your care team. A caregiver alert was also submitted via WhatsApp; delivery is not guaranteed. "
                       "If you need immediate medical help, call 108.",
         "query_prompt": "Please type your question or what you need. It will be shared with your care team.",
         "query_ack": "Thanks, your message has been shared with your care team. They will get back to you.",
@@ -48,7 +48,7 @@ T = {
         "menu": "OnKo मेन्यू:\n1️⃣ आज की दवाइयाँ\n2️⃣ सवाल पूछें / मदद चाहिए\n"
                 "🆘 तुरंत मदद के लिए SOS भेजें — आपके केयरगिवर और केयर टीम को सूचना दी जाएगी।",
         "sos_ack": "आपका SOS आपकी केयर टीम को भेज दिया गया है। तुरंत चिकित्सा सहायता के लिए 108 पर कॉल करें।",
-        "sos_ack_cg": "आपका SOS आपकी केयर टीम और केयरगिवर को भेज दिया गया है। "
+        "sos_ack_cg": "आपका SOS आपकी केयर टीम को भेज दिया गया है। केयरगिवर के लिए WhatsApp अलर्ट भी भेजने के लिए स्वीकार किया गया है; डिलीवरी की गारंटी नहीं है। "
                       "तुरंत चिकित्सा सहायता के लिए 108 पर कॉल करें।",
         "query_prompt": "कृपया अपना सवाल या ज़रूरत लिखें। इसे आपकी केयर टीम तक पहुँचाया जाएगा।",
         "query_ack": "धन्यवाद, आपका संदेश आपकी केयर टीम तक पहुँचा दिया गया है। वे आपसे संपर्क करेंगे।",
@@ -70,7 +70,7 @@ T = {
         "menu": "OnKo మెనూ:\n1️⃣ ఈరోజు మందులు\n2️⃣ ప్రశ్న అడగండి / సహాయం కావాలి\n"
                 "🆘 వెంటనే సహాయం కోసం SOS పంపండి — మీ కేర్‌గివర్ మరియు కేర్ టీమ్‌కు తెలియజేయబడుతుంది.",
         "sos_ack": "మీ SOS మీ కేర్ టీమ్‌కు పంపబడింది. తక్షణ వైద్య సహాయం కోసం 108కు కాల్ చేయండి.",
-        "sos_ack_cg": "మీ SOS మీ కేర్ టీమ్‌కు మరియు కేర్‌గివర్‌కు పంపబడింది. "
+        "sos_ack_cg": "మీ SOS మీ కేర్ టీమ్‌కు పంపబడింది. కేర్‌గివర్‌కు WhatsApp అలర్ట్ కూడా పంపేందుకు సమర్పించబడింది; డెలివరీ హామీ కాదు. "
                       "తక్షణ వైద్య సహాయం కోసం 108కు కాల్ చేయండి.",
         "query_prompt": "దయచేసి మీ ప్రశ్న లేదా అవసరాన్ని టైప్ చేయండి. ఇది మీ కేర్ టీమ్‌కు పంపబడుతుంది.",
         "query_ack": "ధన్యవాదాలు, మీ సందేశం మీ కేర్ టీమ్‌కు పంపబడింది. వారు మిమ్మల్ని సంప్రదిస్తారు.",
@@ -92,7 +92,7 @@ T = {
         "menu": "OnKo மெனு:\n1️⃣ இன்றைய மருந்துகள்\n2️⃣ கேள்வி கேட்க / உதவி தேவை\n"
                 "🆘 உடனடி உதவிக்கு SOS அனுப்பவும் — உங்கள் பராமரிப்பாளருக்கும் பராமரிப்புக் குழுவுக்கும் தெரிவிக்கப்படும்.",
         "sos_ack": "உங்கள் SOS உங்கள் பராமரிப்புக் குழுவுக்கு அனுப்பப்பட்டது. உடனடி மருத்துவ உதவிக்கு 108-ஐ அழைக்கவும்.",
-        "sos_ack_cg": "உங்கள் SOS உங்கள் பராமரிப்புக் குழுவுக்கும் பராமரிப்பாளருக்கும் அனுப்பப்பட்டது. "
+        "sos_ack_cg": "உங்கள் SOS உங்கள் பராமரிப்புக் குழுவுக்கு அனுப்பப்பட்டது. பராமரிப்பாளருக்கான WhatsApp எச்சரிக்கையும் அனுப்ப சமர்ப்பிக்கப்பட்டது; விநியோகம் உறுதி செய்யப்படவில்லை. "
                       "உடனடி மருத்துவ உதவிக்கு 108-ஐ அழைக்கவும்.",
         "query_prompt": "உங்கள் கேள்வி அல்லது தேவையைத் தட்டச்சு செய்யவும். இது உங்கள் பராமரிப்புக் குழுவுக்கு அனுப்பப்படும்.",
         "query_ack": "நன்றி, உங்கள் செய்தி உங்கள் பராமரிப்புக் குழுவுக்கு அனுப்பப்பட்டது. அவர்கள் உங்களைத் தொடர்புகொள்வார்கள்.",
@@ -260,8 +260,12 @@ def notify_caregivers(db, patient: Patient, channel: str = "whatsapp") -> list[s
         body = (f"OnKo alert: {patient.name} pressed SOS via {channel} at {today_ist():%H:%M, %d %b}. "
                 f"Their care team has been notified. Please check on them. "
                 f"If immediate medical help is needed, call 108.")
-        send(cg.phone_whatsapp, body)
-        notified.append(cg.name)
+        accepted, error = send_detail(cg.phone_whatsapp, body)
+        if accepted:
+            # Twilio accepted the message for sending. This does not prove WhatsApp delivery.
+            notified.append(cg.name)
+        elif error:
+            _log(f"SOS caregiver alert not accepted for {cg.name}: {error}")
     from core.auth import Actor            # local import: core.routers.sos imports this module
     audit.log(db, Actor("system", "whatsapp"), NOTIFIED_ACTION, "patient", patient.id, None,
               {"names": notified, "channel": channel})
