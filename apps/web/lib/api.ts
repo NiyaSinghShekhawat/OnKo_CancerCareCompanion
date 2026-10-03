@@ -36,7 +36,7 @@ export type EnrollmentResult = {
   login_id: string;
   whatsapp_sent: boolean;
   warning?: string;
-  demo_access_code?: string;
+  demo_password?: string;
 };
 
 export type PatientLoginResult = {
@@ -199,10 +199,10 @@ export const api = {
       { role: "doctor", userId: "doc_mehta" },
     ),
 
-  patientLogin: (patient_id: string, access_code: string) =>
+  patientLogin: (patient_id: string, password: string) =>
     req<PatientLoginResult>(
       "/patient-auth/login",
-      { method: "POST", body: JSON.stringify({ patient_id, access_code }) },
+      { method: "POST", body: JSON.stringify({ patient_id, password }) },
       { role: "patient", userId: patient_id || "patient_login" },
     ),
 
