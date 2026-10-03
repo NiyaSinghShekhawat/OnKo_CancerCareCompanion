@@ -155,6 +155,16 @@ class Caregiver(Base):
         "view_journey": True, "upload_reports": False, "receive_escalations": True})
 
 
+class CaregiverAccess(Base):
+    """Reusable caregiver dashboard credential linked to one caregiver record."""
+    __tablename__ = "caregiver_access"
+    caregiver_id: Mapped[str] = mapped_column(String, ForeignKey("caregivers.id"), primary_key=True)
+    password_hash: Mapped[str] = mapped_column(String)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_id)
