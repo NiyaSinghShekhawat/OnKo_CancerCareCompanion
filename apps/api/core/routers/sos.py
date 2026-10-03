@@ -2,10 +2,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from core.db import get_db
-from core.auth import get_actor
+from core.auth import get_actor, require_patient_access
 from core.models import Patient
 from core.serialize import to_dict
-from core.services import audit, attention
+from core.services import audit, attention, journey_state
+from whatsapp import messages
 
 router = APIRouter(tags=["sos"])
 
@@ -21,14 +22,17 @@ def trigger_sos(db, actor, patient_id: str, channel: str, note: str | None = Non
     p = db.get(Patient, patient_id)
     if not p:
         raise HTTPException(404, "Patient not found")
+    if not journey_state.attention_allowed(p.journey_state):
+        raise HTTPException(409, f"Journey state {p.journey_state}: no attention items are raised")
     item = attention.raise_item(db, p, "SOS", f"Patient-triggered SOS via {channel}")
     db.flush()
     audit.log(db, actor, "sos_triggered", "attention_item", item.id, None, {"channel": channel, "note": note})
-    # TODO(Samprada + Shreyan): notify consented caregivers via whatsapp.messages.notify_caregivers
+    messages.notify_caregivers(db, p, channel)
     db.commit()
     return item
 
 
 @router.post("/sos")
 def sos(body: SOSIn, db=Depends(get_db), actor=Depends(get_actor)):
+    require_patient_access(actor, body.patient_id, db)
     return to_dict(trigger_sos(db, actor, body.patient_id, body.channel, body.note))
