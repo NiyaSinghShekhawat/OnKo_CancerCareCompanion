@@ -39,8 +39,9 @@ class Patient(Base):
 class PatientAccess(Base):
     """Prototype patient-dashboard credential record.
 
-    Only a SHA-256 hash of the temporary access code is stored. The temporary
-    code itself is delivered once through the configured WhatsApp provider.
+    Only a SHA-256 hash of the patient password is stored. The initial
+    password is delivered through the configured WhatsApp provider and remains
+    valid until it is changed or disabled.
     """
     __tablename__ = "patient_access"
     patient_id: Mapped[str] = mapped_column(String, ForeignKey("patients.id"), primary_key=True)
