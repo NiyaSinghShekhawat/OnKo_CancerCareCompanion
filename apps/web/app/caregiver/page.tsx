@@ -3,12 +3,13 @@ import { AlertCircle, CalendarClock, CheckCircle2, Pill, Route, ShieldCheck } fr
 import CaregiverShell from "@/components/CaregiverShell";
 import CaregiverEventCard from "@/components/CaregiverEventCard";
 import { serverApi } from "@/lib/server-api";
+import {currentCaregiverId} from "@/lib/caregiver-session";
 
 export const dynamic = "force-dynamic";
-const CAREGIVER = { id: "cg_sunita", name: "Sunita Kumar", relation: "Wife" };
-
 export default async function CaregiverHome() {
-  const view = await serverApi.caregiverView(CAREGIVER.id);
+  const caregiverId=currentCaregiverId();
+  const view = await serverApi.caregiverView(caregiverId);
+  const CAREGIVER = { id: view.caregiver.id, name: view.caregiver.name, relation: view.caregiver.relation };
   return (
     <CaregiverShell patient={view.patient} caregiver={CAREGIVER}>
       <div className="mx-auto max-w-5xl space-y-6">

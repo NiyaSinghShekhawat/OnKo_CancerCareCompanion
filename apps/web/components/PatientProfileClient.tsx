@@ -6,9 +6,9 @@ import type { Caregiver, Patient } from "@/lib/types";
 import ABHAConnection from "@/components/ABHAConnection";
 import PatientFirstAccess from "@/components/PatientFirstAccess";
 import LanguagePreview from "@/components/LanguagePreview";
-import CaregiverLifecycle from "@/components/CaregiverLifecycle";
+import CaregiverAccessManager from "@/components/CaregiverAccessManager";
 
-export default function PatientProfileClient({ p, c }: { p: Patient; c?: Caregiver }) {
+export default function PatientProfileClient({ p, caregivers }: { p: Patient; caregivers: Caregiver[] }) {
   const [language, setLanguage] = useState(p.preferred_language);
   const [whatsapp, setWhatsapp] = useState(true);
   const [saved, setSaved] = useState(false);
@@ -49,11 +49,7 @@ export default function PatientProfileClient({ p, c }: { p: Patient; c?: Caregiv
         </div>
       </section>
 
-      {c ? (
-        <div className="mt-5"><CaregiverLifecycle caregiver={c} mode="patient"/></div>
-      ) : (
-        <section className="onko-card mt-5 p-5 text-[14px] text-onko-muted">No caregiver is currently linked to this patient.</section>
-      )}
+      <CaregiverAccessManager patient={p} initial={caregivers}/>
 
       <section id="language" className="onko-card mt-5 scroll-mt-28 p-5">
         <div className="flex items-center gap-3"><Globe2 size={20} className="text-onko-teal"/><h2 className="text-[20px] font-bold">Language & communication</h2></div>

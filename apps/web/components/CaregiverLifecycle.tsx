@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Link2, ShieldCheck, UserRoundCheck, UserRoundX } from "lucide-react";
+import { Link2, ShieldCheck, UserRoundCheck, UserRoundX } from "lucide-react";
 import type { Caregiver } from "@/lib/types";
 import { api } from "@/lib/api";
 
@@ -18,22 +18,18 @@ export default function CaregiverLifecycle({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  async function moveConsent(action: "accept" | "revoke" | "reinvite") {
+  async function moveConsent(action: "revoke" | "reinvite") {
     setBusy(true);
     setError("");
     setMessage("");
     try {
       const updated =
-        action === "accept"
-          ? await api.acceptCaregiver(caregiver.id)
-          : action === "revoke"
-            ? await api.revokeCaregiver(
-                caregiver.id,
-                mode === "caregiver"
-                  ? { role: "caregiver", userId: caregiver.id }
-                  : { role: "patient", userId: caregiver.patient_id },
-              )
-            : await api.reinviteCaregiver(caregiver.id, { role: "patient", userId: caregiver.patient_id });
+        action === "revoke"
+          ? await api.revokeCaregiver(
+              caregiver.id,
+              { role: "patient", userId: caregiver.patient_id },
+            )
+          : await api.reinviteCaregiver(caregiver.id, { role: "patient", userId: caregiver.patient_id });
       setState(updated.consent_status);
       setMessage(
         updated.consent_status === "GRANTED"
@@ -72,10 +68,10 @@ export default function CaregiverLifecycle({
     <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="onko-eyebrow">Caregiver lifecycle</p>
-          <h2 className="mt-1 text-[22px] font-bold">Invitation & consent</h2>
+          <p className="onko-eyebrow">Caregiver access</p>
+          <h2 className="mt-1 text-[22px] font-bold">Consent & permissions</h2>
           <p className="mt-1 text-[13px] text-onko-muted">
-            Consent changes are persisted through the caregiver consent endpoints.
+            The patient controls caregiver access and the information shared.
           </p>
         </div>
         <span
@@ -99,13 +95,7 @@ export default function CaregiverLifecycle({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        {mode === "caregiver" && state === "PENDING" && (
-          <button disabled={busy} onClick={() => void moveConsent("accept")} className="onko-button-primary disabled:opacity-50">
-            <CheckCircle2 size={16} />
-            Accept invitation
-          </button>
-        )}
-        {state === "GRANTED" && (
+        {mode === "patient" && state === "GRANTED" && (
           <button disabled={busy} onClick={() => void moveConsent("revoke")} className="onko-button-secondary text-onko-sos disabled:opacity-50">
             Revoke caregiver access
           </button>

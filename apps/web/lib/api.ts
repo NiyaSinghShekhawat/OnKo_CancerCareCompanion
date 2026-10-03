@@ -18,6 +18,50 @@ const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
 export type ActorRef = { role: Role; userId: string };
 
+export type EnrollmentPayload = {
+  name: string;
+  age: number;
+  gender: string;
+  preferred_language: string;
+  phone: string;
+  abha_id?: string | null;
+  diagnosis_label: string;
+  regimen_label: string;
+  cycle_current: number;
+  cycle_total: number;
+};
+
+export type EnrollmentResult = {
+  patient: Patient;
+  login_id: string;
+  whatsapp_sent: boolean;
+  warning?: string;
+  demo_password?: string;
+};
+
+export type CaregiverInviteResult = {
+  caregiver: Caregiver;
+  login_id: string;
+  whatsapp_sent: boolean;
+  warning?: string;
+  password?: string;
+  demo_password?: string;
+};
+
+export type CaregiverLoginResult = {
+  ok: boolean;
+  caregiver_id: string;
+  name: string;
+  patient_id: string;
+};
+
+export type PatientLoginResult = {
+  ok: boolean;
+  patient_id: string;
+  name: string;
+  must_change: boolean;
+};
+
 let role: Role = "doctor";
 let userId = "doc_mehta";
 
@@ -101,6 +145,16 @@ export const api = {
   caregiverView: (id: string) =>
     USE_MOCKS
       ? mock<CaregiverView>({
+          caregiver: {
+            id: "cg_sunita",
+            patient_id: "p_rajesh",
+            name: "Sunita Kumar",
+            relation: "Wife",
+            phone_whatsapp: "",
+            type: "family",
+            consent_status: "GRANTED",
+            permissions: { view_journey: true, upload_reports: true, receive_escalations: true },
+          },
           patient: {
             id: "p_rajesh",
             name: "Rajesh Kumar",

@@ -9,7 +9,7 @@ import {
 
 const roles = [
   {
-    href: "/patient",
+    href: "/patient/login",
     name: "Patient",
     tag: "Daily companion",
     description: "Follow your care journey, view today's care items, keep reports together, ask for help and stay connected with your care team.",
@@ -26,7 +26,7 @@ const roles = [
     icon: Stethoscope,
   },
   {
-    href: "/caregiver",
+    href: "/caregiver/login",
     name: "Caregiver",
     tag: "Consent-based support",
     description: "Stay informed about the parts of the care journey the patient has chosen to share and help with permitted coordination and uploads.",

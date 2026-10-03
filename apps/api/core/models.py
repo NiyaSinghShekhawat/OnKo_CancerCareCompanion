@@ -40,6 +40,34 @@ class Patient(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class PatientAccess(Base):
+    """Prototype patient-dashboard credential record.
+
+    Only a SHA-256 hash of the patient password is stored. The initial
+    password is delivered through the configured WhatsApp provider and remains
+    valid until it is changed or disabled.
+    """
+    __tablename__ = "patient_access"
+    patient_id: Mapped[str] = mapped_column(String, ForeignKey("patients.id"), primary_key=True)
+    access_code_hash: Mapped[str] = mapped_column(String)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    must_change: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class PatientVerification(Base):
+    """Short-lived WhatsApp OTP state used during doctor-led enrollment."""
+    __tablename__ = "patient_verifications"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_id)
+    phone_whatsapp: Mapped[str] = mapped_column(String)
+    otp_hash: Mapped[str] = mapped_column(String)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class CarePlanItem(Base):
     __tablename__ = "care_plan_items"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_id)
@@ -139,6 +167,16 @@ class Caregiver(Base):
     consent_status: Mapped[str] = mapped_column(String, default="PENDING")
     permissions: Mapped[dict] = mapped_column(JSON, default=lambda: {
         "view_journey": True, "upload_reports": False, "receive_escalations": True})
+
+
+class CaregiverAccess(Base):
+    """Reusable caregiver dashboard credential linked to one caregiver record."""
+    __tablename__ = "caregiver_access"
+    caregiver_id: Mapped[str] = mapped_column(String, ForeignKey("caregivers.id"), primary_key=True)
+    password_hash: Mapped[str] = mapped_column(String)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class AuditLog(Base):

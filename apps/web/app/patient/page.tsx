@@ -2,12 +2,14 @@ import {CalendarDays,ChevronRight,ClipboardList,PauseCircle,Target} from "lucide
 import Link from "next/link";
 import PatientShell from "@/components/PatientShell";
 import PatientEventCard from "@/components/PatientEventCard";
+import CareJourneyCalendar from "@/components/CareJourneyCalendar";
 import {serverApi} from "@/lib/server-api";
 import {fmtDate} from "@/lib/format";
+import {currentPatientId} from "@/lib/patient-session";
 export const dynamic="force-dynamic";
 const DEMO_PATIENTS=new Set(["p_rajesh","p_priya","p_arjun","p_lakshmi","p_meera","p_vikram","p_farhan","p_kamala"]);
 export default async function PatientHome({searchParams}:{searchParams?:{id?:string}}){
- const requested=searchParams?.id??"p_rajesh"; const patientId=DEMO_PATIENTS.has(requested)?requested:"p_rajesh";
+ const patientId=currentPatientId(searchParams);
  const actor={role:"patient" as const,userId:patientId}; const [d,checklist]=await Promise.all([serverApi.patient360(patientId,actor),serverApi.checklistToday(patientId,actor)]);const p=d.patient;
  const future=d.timeline.filter(e=>new Date(e.scheduled_at)>new Date(checklist.date+"T23:59:59")).slice(0,3);
  const completed=d.timeline.filter(e=>e.status==="COMPLETED").length,missed=d.timeline.filter(e=>e.status==="REPORTED_MISSED"||e.status==="NO_RESPONSE").length,pending=d.timeline.filter(e=>e.status==="UPCOMING"||e.status==="CURRENT").length;

@@ -1,6 +1,8 @@
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from core.auth import get_actor, require
 from core.db import get_db
 from core.auth import get_actor, require, require_patient_access
 from core.models import Caregiver, CareEvent, Patient
@@ -9,6 +11,40 @@ from core.services import audit, journey_state, review
 from core.timeutil import utcnow
 
 router = APIRouter(tags=["caregivers"])
+
+
+def _hash_secret(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _normalize_whatsapp(raw: str) -> str:
+    value = raw.strip()
+    if value.startswith("whatsapp:"):
+        value = value[len("whatsapp:"):]
+    digits = re.sub(r"\D", "", value)
+    if len(digits) == 10:
+        digits = "91" + digits
+    if not 10 <= len(digits) <= 15:
+        raise HTTPException(400, "Enter a valid mobile number with country code")
+    return "whatsapp:+" + digits
+
+
+def _caregiver_id(name: str, db) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")[:18] or "caregiver"
+    for _ in range(20):
+        candidate = f"cg_{slug}_{secrets.token_hex(2)}"
+        if not db.get(Caregiver, candidate):
+            return candidate
+    raise HTTPException(500, "Unable to allocate caregiver id")
+
+
+def _initial_password() -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+def _can_manage(actor, patient_id: str) -> bool:
+    return actor.role == "doctor" or (actor.role == "patient" and actor.user_id == patient_id)
 
 
 class CaregiverIn(BaseModel):
@@ -34,7 +70,25 @@ def invite(pid: str, body: CaregiverIn, db=Depends(get_db), actor=Depends(get_ac
     db.flush()
     audit.log(db, actor, "caregiver_invited", "caregiver", cg.id, None, body.model_dump())
     db.commit()
-    return to_dict(cg)
+
+    login_url = os.getenv("CAREGIVER_LOGIN_URL", "http://localhost:3000/caregiver/login")
+    sent = messages.send(
+        phone,
+        messages.render_caregiver_access(cg.name, patient.name, cg.id, password, login_url),
+    )
+    response = {
+        "caregiver": to_dict(cg),
+        "login_id": cg.id,
+        "whatsapp_sent": sent,
+        # Returned once to the authenticated patient who created access.
+        # Only the hash is persisted in the database.
+        "password": password,
+    }
+    if not sent:
+        response["warning"] = "Caregiver added, but WhatsApp credential delivery failed or is not configured."
+    if os.getenv("ONKO_DEMO_CREDENTIAL_ECHO", "").lower() == "true":
+        response["demo_password"] = password
+    return response
 
 
 class CaregiverUpdate(BaseModel):
