@@ -106,6 +106,41 @@ def test_seeded_caregivers_have_fixed_ids_that_survive_a_reset(db):
     assert c.get("/caregivers/cg_sunita/view", headers=sunita).status_code == 200
 
 
+PLACEHOLDER_PHONES = {"cg_sunita": "whatsapp:+910000000010", "cg_karthik": "whatsapp:+910000000011",
+                      "cg_lakshmi": "whatsapp:+910000000012", "cg_harpreet": "whatsapp:+910000000013",
+                      "cg_ayesha": "whatsapp:+910000000014", "cg_suresh": "whatsapp:+910000000015"}
+
+
+def caregiver_phones():
+    s = SessionLocal()
+    phones = {g.id: g.phone_whatsapp for g in s.query(Caregiver)}
+    s.close()
+    return phones
+
+
+@pytest.mark.parametrize("value", [None, ""])
+def test_demo_caregiver_number_defaults_to_placeholder(monkeypatch, value):
+    if value is None:
+        monkeypatch.delenv("DEMO_CAREGIVER_WHATSAPP", raising=False)
+    else:
+        monkeypatch.setenv("DEMO_CAREGIVER_WHATSAPP", value)
+    seed.run()
+    assert caregiver_phones() == PLACEHOLDER_PHONES
+
+
+def test_demo_caregiver_number_from_env_reaches_sunita_on_sos(monkeypatch, capsys):
+    monkeypatch.setenv("DEMO_CAREGIVER_WHATSAPP", "whatsapp:+919876543210")
+    assert c.post("/demo/reset", headers=DOCTOR).status_code == 200            # reset picks it up too
+    assert caregiver_phones() == {**PLACEHOLDER_PHONES, "cg_sunita": "whatsapp:+919876543210"}   # only Sunita changes
+    capsys.readouterr()
+    r = c.post("/sos", json={"patient_id": "p_rajesh", "channel": "app"},
+               headers={"X-Role": "patient", "X-User-Id": "p_rajesh"})
+    assert r.status_code == 200
+    out = capsys.readouterr().out                                              # Twilio keys blanked: dry run
+    assert "[whatsapp:dry-run] -> whatsapp:+919876543210" in out
+    assert "+910000000010" not in out
+
+
 def test_no_interpretation_words_in_seeded_text(db):
     texts = []
     for pid in NEW:

@@ -89,6 +89,14 @@ The two WhatsApp routes (in `whatsapp/`):
 
 - **Free tier sleeps.** Render's free instance stops after about 15 minutes without traffic; the first request after that takes a while to wake it. Open `/docs` a minute before demoing.
 - **Reset only by agreement.** `POST /demo/reset` (and `python -m core.seed` against the Supabase URL) wipes everyone's shared data. Agree in the group first.
+- **Real WhatsApp numbers for the demo.** Seeded phone numbers are placeholders (`+9100000000xx`), so Twilio can't deliver to them. Two optional variables, read when seeding (`python -m core.seed` or `POST /demo/reset`), put real phones in:
+
+  | Variable | Becomes the WhatsApp number of |
+  |---|---|
+  | `DEMO_PATIENT_WHATSAPP` | Rajesh (`p_rajesh`) — the phone that chats with the bot |
+  | `DEMO_CAREGIVER_WHATSAPP` | Sunita (`cg_sunita`) — the phone that receives Rajesh's SOS alerts |
+
+  Each number must first **join the Twilio WhatsApp sandbox** (send the sandbox's "join …" message to `TWILIO_WHATSAPP_FROM`); otherwise Twilio accepts the request but fails delivery with error 63015, and the alert never arrives even though the audit shows `caregivers_notified`. Use two different phones. If `DEMO_CAREGIVER_WHATSAPP` is unset or empty, Sunita keeps her placeholder; if `DEMO_PATIENT_WHATSAPP` is unset, Rajesh gets `whatsapp:+910000000000`. Tests always use the placeholders.
 
 ---
 
@@ -120,7 +128,7 @@ Every request sends `X-Role` and `X-User-Id` (see §8). These are the seeded use
 
 | Caregiver id | Name | Patient | Relation | Consent |
 |---|---|---|---|---|
-| `cg_sunita` | Sunita Kumar | `p_rajesh` | Wife | GRANTED |
+| `cg_sunita` | Sunita Kumar | `p_rajesh` | Wife | GRANTED (number from `DEMO_CAREGIVER_WHATSAPP` if set) |
 | `cg_karthik` | Karthik Sundaram | `p_priya` | Brother | PENDING |
 | `cg_lakshmi` | Lakshmi Iyer | `p_meera` | Daughter | GRANTED |
 | `cg_harpreet` | Harpreet Singh | `p_vikram` | Wife | GRANTED |
